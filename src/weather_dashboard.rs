@@ -116,7 +116,7 @@ pub fn render_svg_to_png(settings: &DashboardSettings, svg_path: &Path) -> Resul
     convert_svg_to_png(
         &svg_path.to_path_buf(),
         &settings.misc.generated_png_name,
-        2.0,
+        settings.misc.png_scale_factor,
     )?;
 
     logger::success(format!(
@@ -210,7 +210,7 @@ pub fn generate_weather_dashboard_injection(
         convert_svg_to_png(
             &output_svg_name.to_path_buf(),
             &settings.misc.generated_png_name,
-            2.0,
+            settings.misc.png_scale_factor,
         )?;
 
         logger::success(format!(
