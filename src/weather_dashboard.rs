@@ -160,7 +160,7 @@ pub fn generate_weather_dashboard_injection(
         convert_svg_to_png(
             &output_svg_name.to_path_buf(),
             &CONFIG.misc.generated_png_name,
-            2.0,
+            CONFIG.misc.png_scale_factor,
         )?;
 
         logger::success(format!(

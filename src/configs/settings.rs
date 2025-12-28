@@ -137,6 +137,12 @@ pub struct Misc {
     pub generated_svg_name: PathBuf,
     pub generated_png_name: PathBuf,
     pub svg_icons_directory: PathBuf,
+    #[serde(default = "default_png_scale_factor")]
+    pub png_scale_factor: f32,
+}
+
+fn default_png_scale_factor() -> f32 {
+    2.0
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -304,6 +310,7 @@ impl DashboardSettings {
         logger::config_group("File Paths");
         logger::kvp("Cache Path", self.misc.weather_data_cache_path.display());
         logger::kvp("Template", self.misc.template_path.display());
+        logger::kvp("PNG Scale factor", self.misc.png_scale_factor);
         logger::kvp("Output SVG", self.misc.generated_svg_name.display());
         logger::kvp("Output PNG", self.misc.generated_png_name.display());
         logger::kvp("Icons Directory", self.misc.svg_icons_directory.display());
