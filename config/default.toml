@@ -57,6 +57,7 @@ template_path = "dashboard-template-min.svg"
 generated_svg_name = "dashboard.svg"
 generated_png_name = "dashboard.png"
 svg_icons_directory = "static/fill-svg-static/"
+png_scale_factor = 2.0
 
 [debugging]
 disable_weather_api_requests = false # Load cached data instead of making API requests (requires at least one successful run first)
