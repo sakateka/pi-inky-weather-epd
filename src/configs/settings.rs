@@ -151,6 +151,7 @@ pub struct RenderOptions {
     pub temp_unit: TemperatureUnit,
     pub wind_speed_unit: WindSpeedUnit,
     pub date_format: String,
+    pub time_format: String,
     pub use_moon_phase_instead_of_clear_night: bool,
     pub x_axis_always_at_min: bool,
     pub use_gust_instead_of_wind: bool,
@@ -284,6 +285,7 @@ impl DashboardSettings {
             format!("{}", self.render_options.wind_speed_unit),
         );
         logger::kvp("Date Format", &self.render_options.date_format);
+        logger::kvp("Time Format", &self.render_options.time_format);
         logger::kvp(
             "Use Moon Phase",
             self.render_options.use_moon_phase_instead_of_clear_night,
