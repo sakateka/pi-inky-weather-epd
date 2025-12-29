@@ -132,6 +132,9 @@ You can customise the date format using chrono strftime specifiers. The default 
 # date_format = "%d.%m.%Y"       # 06.12.2025 (Germany)
 
 date_format = "%A, %d %B"
+
+# time_format is also provided as an additional option:
+time_format = "%T"  # 23:00:00
 ```
 
 See [chrono strftime documentation](https://docs.rs/chrono/latest/chrono/format/strftime/) for all available format specifiers.

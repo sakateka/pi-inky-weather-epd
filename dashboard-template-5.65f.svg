@@ -28,7 +28,8 @@
     <!-- Current Day Information -->
     <!-- Due to resvg bug, the position is intentionally off to compensate for the bug -->
     <!-- Do not modify the x position of current_hour_temp and current_hour_feels_like, see above issue at the start of the file -->
-    <text x="580" y="47" font-size="32" fill="{text_colour}"  text-anchor="end">{current_day_date}</text>
+    <text x="580" y="30" font-size="32" fill="{text_colour}"  text-anchor="end">{current_day_date}</text>
+    <text x="580" y="62" font-size="32" fill="{text_colour}"  text-anchor="end">{current_day_time}</text>
     <image x="0" y="0" width="150" height="160" href="{current_hour_weather_icon}" />
 
 
