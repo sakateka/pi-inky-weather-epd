@@ -6,8 +6,8 @@
 include!(concat!(env!("OUT_DIR"), "/config_generated.rs"));
 
 use defmt::*;
-use embassy_net::tcp::TcpSocket;
 use embassy_net::Stack;
+use embassy_net::tcp::TcpSocket;
 use embassy_time::{Duration, Timer};
 use static_cell::StaticCell;
 
@@ -165,17 +165,11 @@ fn format_http_request(buf: &mut [u8], host: &str, path: &str) -> Result<usize, 
 
 /// Find end of HTTP headers (\r\n\r\n)
 fn find_header_end(data: &[u8]) -> Option<usize> {
-    for i in 0..data.len().saturating_sub(3) {
-        if &data[i..i + 4] == b"\r\n\r\n" {
-            return Some(i);
-        }
-    }
-    None
+    (0..data.len().saturating_sub(3)).find(|&i| &data[i..i + 4] == b"\r\n\r\n")
 }
 
 /// Wait for specified number of minutes
 pub async fn wait_minutes(minutes: u32) {
     let duration = Duration::from_secs(minutes as u64 * 60);
-    info!("Sleeping for {} minutes", minutes);
     Timer::after(duration).await;
 }
