@@ -24,5 +24,6 @@ use_moon_phase_instead_of_clear_night = false
 # Note: To run BOM tests, override with: APP_DEBUGGING__DISABLE_WEATHER_API_REQUESTS=true APP_API__PROVIDER=bom
 disable_weather_api_requests = false
 disable_png_output = true
+disable_raw_7color_output = true
 allow_pre_release_version = false
 enable_debug_logs = true

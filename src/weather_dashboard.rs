@@ -167,6 +167,24 @@ pub fn generate_weather_dashboard_injection(
             "PNG saved: {}",
             current_dir.join(&CONFIG.misc.generated_png_name).display()
         ));
+
+        if !CONFIG.debugging.disable_raw_7color_output {
+            logger::subsection("Converting PNG to RAW 4bit-color image data");
+            // Ensure the parent directory for the generated RAW exists
+            if let Some(raw_parent) = CONFIG.misc.generated_raw_name.parent() {
+                std::fs::create_dir_all(raw_parent)?;
+            }
+
+            convert_png_to_raw_7color(
+                &CONFIG.misc.generated_png_name,
+                &CONFIG.misc.generated_raw_name,
+            )?;
+
+            logger::success(format!(
+                "RAW saved: {}",
+                current_dir.join(&CONFIG.misc.generated_raw_name).display()
+            ));
+        }
     }
     Ok(())
 }

@@ -65,6 +65,119 @@ pub fn convert_svg_to_png(
     Ok(())
 }
 
+/// 7-color e-ink display palette (RGB values)
+/// Colors: Black, White, Green, Blue, Red, Yellow, Orange, Purple
+const PALETTE_7COLOR: [[u8; 3]; 8] = [
+    [0, 0, 0],       // Black
+    [255, 255, 255], // White
+    [67, 138, 28],   // Green
+    [100, 64, 255],  // Blue
+    [191, 0, 0],     // Red
+    [255, 243, 56],  // Yellow
+    [232, 126, 0],   // Orange
+    [194, 164, 244], // Purple
+];
+
+/// Finds the closest palette color index for a given RGB color using Euclidean distance.
+///
+/// # Arguments
+///
+/// * `color` - RGB color as [r, g, b] array
+///
+/// # Returns
+///
+/// * `u8` - Index of the closest palette color (0-7)
+fn depalette(color: [u8; 3]) -> u8 {
+    let mut min_diff = i32::MAX;
+    let mut best_index = 0u8;
+
+    for (index, palette_color) in PALETTE_7COLOR.iter().enumerate() {
+        let diff_r = color[0] as i32 - palette_color[0] as i32;
+        let diff_g = color[1] as i32 - palette_color[1] as i32;
+        let diff_b = color[2] as i32 - palette_color[2] as i32;
+        let diff = diff_r * diff_r + diff_g * diff_g + diff_b * diff_b;
+
+        if diff < min_diff {
+            min_diff = diff;
+            best_index = index as u8;
+        }
+    }
+
+    best_index
+}
+
+/// Converts a PNG image to raw 7-color format with 4-bit nibble packing.
+///
+/// Each pixel is mapped to the closest color in the 7-color palette,
+/// then packed as 4-bit values (2 pixels per byte).
+///
+/// # Arguments
+///
+/// * `input_path` - Path to the input PNG file
+/// * `output_path` - Path to save the output raw file
+///
+/// # Returns
+///
+/// * `Result<(), Error>` - Ok(()) if successful, or an error message
+pub fn convert_png_to_raw_7color(input_path: &PathBuf, output_path: &PathBuf) -> Result<(), Error> {
+    // Load the PNG image
+    let img =
+        image::open(input_path).map_err(|e| Error::msg(format!("Failed to open PNG file: {e}")))?;
+
+    // Convert to RGB8 format
+    let rgb_img = img.to_rgb8();
+    let (width, height) = rgb_img.dimensions();
+
+    // Calculate output buffer size (2 pixels per byte due to 4-bit packing)
+    let total_pixels = (width * height) as usize;
+    let output_size = total_pixels.div_ceil(2); // Round up for odd number of pixels
+    let mut output_buffer = Vec::with_capacity(output_size);
+
+    // Process pixels row by row, in pairs (matching C implementation)
+    // C code: for (j = 0; j < y; j++) { for (i = 0; i < x / 2; i++) {
+    for y in 0..height {
+        for i in 0..(width / 2) {
+            let x1 = i * 2;
+            let x2 = i * 2 + 1;
+
+            // Get first pixel (even x position)
+            // C code: int c1 = depalette(data + n * (i * 2 + x * j));
+            let pixel1 = rgb_img.get_pixel(x1, y);
+            let color1 = [pixel1[0], pixel1[1], pixel1[2]];
+            let c1 = depalette(color1);
+
+            // Get second pixel (odd x position)
+            // C code: int c2 = depalette(data + n * (i * 2 + x * j + 1));
+            let pixel2 = rgb_img.get_pixel(x2, y);
+            let color2 = [pixel2[0], pixel2[1], pixel2[2]];
+            let c2 = depalette(color2);
+
+            // Pack two 4-bit indices into one byte
+            // C code: char uc = c2 | (c1 << 4);
+            // c1 goes to high nibble, c2 goes to low nibble
+            let packed_byte = c2 | (c1 << 4);
+            output_buffer.push(packed_byte);
+        }
+
+        // Handle odd width - add padding pixel if necessary
+        if width % 2 == 1 {
+            let x = width - 1;
+            let pixel = rgb_img.get_pixel(x, y);
+            let color = [pixel[0], pixel[1], pixel[2]];
+            let c = depalette(color);
+            // Last pixel in high nibble, low nibble is 0 (black)
+            let packed_byte = c << 4;
+            output_buffer.push(packed_byte);
+        }
+    }
+
+    // Write the packed data to the output file
+    fs::write(output_path, &output_buffer)
+        .map_err(|e| Error::msg(format!("Failed to write raw file: {e}")))?;
+
+    Ok(())
+}
+
 /// Loads fonts into the provided font database.
 ///
 /// # Arguments

@@ -56,11 +56,13 @@ weather_data_cache_path = "./cached_data/"
 template_path = "dashboard-template-min.svg"
 generated_svg_name = "dashboard.svg"
 generated_png_name = "dashboard.png"
+generated_raw_name = "dashboard.raw"
 svg_icons_directory = "static/fill-svg-static/"
 png_scale_factor = 2.0
 
 [debugging]
 disable_weather_api_requests = false # Load cached data instead of making API requests (requires at least one successful run first)
 disable_png_output = false
+disable_raw_7color_output = false
 allow_pre_release_version = false
 enable_debug_logs = false
