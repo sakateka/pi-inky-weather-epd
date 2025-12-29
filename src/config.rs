@@ -42,7 +42,7 @@ pub fn init_all(p: embassy_rp::Peripherals) -> (EpdPins<'static>, Keys<'static>)
     let rst = Output::new(p.PIN_12, Level::High);
     let dc = Output::new(p.PIN_8, Level::High);
     let cs = Output::new(p.PIN_9, Level::High);
-    let busy = Input::new(p.PIN_13, Pull::Up);
+    let busy = Input::new(p.PIN_13, Pull::None);
 
     // Bit-banged SPI lines
     let clk = Output::new(p.PIN_10, Level::Low);

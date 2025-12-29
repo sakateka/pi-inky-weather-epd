@@ -44,7 +44,6 @@ impl<'d> Epd5in65f<'d> {
 
     /// Bit-banged SPI: write single byte, MSB first
     fn spi_write_byte(&mut self, mut value: u8) {
-        self.pins.cs.set_low();
         for _ in 0..8 {
             self.pins.clk.set_low();
             if (value & 0x80) != 0 {
@@ -56,7 +55,6 @@ impl<'d> Epd5in65f<'d> {
             value <<= 1;
         }
         self.pins.clk.set_low();
-        self.pins.cs.set_high();
     }
 
     /// Send command
@@ -86,16 +84,30 @@ impl<'d> Epd5in65f<'d> {
 
     /// Wait until BUSY becomes high
     async fn wait_busy_high(&mut self) {
+        defmt::debug!("wait_busy_high: starting, current state={}", self.pins.busy.is_high());
+        let mut iterations = 0u32;
         while !self.pins.busy.is_high() {
             Timer::after(Duration::from_millis(1)).await;
+            iterations += 1;
+            if iterations & 127 == 0 {
+                defmt::debug!("wait_busy_high: still waiting, iterations={}, state={}", iterations, self.pins.busy.is_high());
+            }
         }
+        defmt::debug!("wait_busy_high: done after {} iterations, final state={}", iterations, self.pins.busy.is_high());
     }
 
     /// Wait until BUSY becomes low
     async fn wait_busy_low(&mut self) {
+        defmt::debug!("wait_busy_low: starting, current state={}", self.pins.busy.is_high());
+        let mut iterations = 0u32;
         while self.pins.busy.is_high() {
             Timer::after(Duration::from_millis(1)).await;
+            iterations += 1;
+            if iterations & 127 == 0 {
+                defmt::debug!("wait_busy_low: still waiting, iterations={}, state={}", iterations, self.pins.busy.is_high());
+            }
         }
+        defmt::debug!("wait_busy_low: done after {} iterations, final state={}", iterations, self.pins.busy.is_high());
     }
 
     /// Initialize display (sequence mirrors C)

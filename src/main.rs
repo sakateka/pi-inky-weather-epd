@@ -2,9 +2,10 @@
 #![no_main]
 
 use cyw43::JoinOptions;
-use cyw43_pio::{PioSpi, DEFAULT_CLOCK_DIVIDER};
+use cyw43_pio::{DEFAULT_CLOCK_DIVIDER, PioSpi};
 use defmt::*;
 use embassy_executor::Spawner;
+use embassy_futures::select::{select, Either};
 use embassy_net::{Config, StackResources};
 use embassy_rp::bind_interrupts;
 use embassy_rp::gpio::{Level, Output};
@@ -18,8 +19,12 @@ mod config;
 mod epd_5in65f;
 mod network;
 
-use epd_5in65f::{Epd5in65f, EPD_5IN65F_WHITE};
-use network::{download_image, wait_minutes, IMAGE_BUFFER_SIZE};
+use config::Keys;
+use epd_5in65f::{EPD_5IN65F_WHITE, Epd5in65f};
+use network::{IMAGE_BUFFER_SIZE, download_image};
+
+// Static buffer for image data
+static mut IMAGE_BUFFER: [u8; IMAGE_BUFFER_SIZE] = [0u8; IMAGE_BUFFER_SIZE];
 
 bind_interrupts!(struct Irqs {
     PIO0_IRQ_0 => InterruptHandler<PIO0>;
@@ -44,7 +49,7 @@ async fn main(spawner: Spawner) {
     let p = embassy_rp::init(Default::default());
 
     // Init GPIOs for e-paper display (bit-banged SPI pins and keys)
-    let (epd_pins, _keys) = config::init_all(p);
+    let (epd_pins, keys) = config::init_all(p);
 
     // Init e-paper driver once
     let mut epd = Epd5in65f::new(epd_pins);
@@ -95,8 +100,54 @@ async fn main(spawner: Spawner) {
 
     spawner.spawn(net_task(runner)).unwrap();
 
+    // Connect to WiFi (re-connect each cycle)
+    info!("Joining WiFi network: {}", network::WIFI_SSID);
+    while let Err(err) = control
+        .join(
+            network::WIFI_SSID,
+            JoinOptions::new(network::WIFI_PASSWORD.as_bytes()),
+        )
+        .await
+    {
+        warn!("WiFi join failed: {:?}, retrying...", err.status);
+        Timer::after(Duration::from_secs(1)).await;
+    }
+
     // Main loop - update display periodically
     loop {
+        // Check for button presses with timeout
+        let sleep_duration = Duration::from_secs(config::UPDATE_INTERVAL_MINUTES as u64 * 60);
+        let button_event = select(
+            wait_for_button_press(&keys),
+            Timer::after(sleep_duration)
+        ).await;
+
+        match button_event {
+            Either::First(button) => {
+                info!("Button pressed: {}", button);
+                match button {
+                    0 => {
+                        info!("KEY0 pressed - refreshing display immediately");
+                        // Continue to display update below
+                    }
+                    1 => {
+                        info!("KEY1 pressed - blinking LED");
+                        blink_led(&mut control).await;
+                        continue; // Skip display update, go back to sleep
+                    }
+                    _ => {
+                        info!("Unknown button");
+                        continue;
+                    }
+                }
+            }
+            Either::Second(_) => {
+                info!("Sleep timeout - refreshing display");
+                // Continue to display update below
+            }
+        }
+
+        // Display update logic
         // Set WiFi to PowerSave mode at the start of each cycle
         info!("Setting WiFi to PowerSave mode");
         control
@@ -106,16 +157,6 @@ async fn main(spawner: Spawner) {
         // Initialize e-paper panel before each update
         info!("EPD init");
         epd.init().await;
-
-        // Connect to WiFi (re-connect each cycle)
-        info!("Joining WiFi network: {}", network::WIFI_SSID);
-        while let Err(err) = control
-            .join(network::WIFI_SSID, JoinOptions::new(network::WIFI_PASSWORD.as_bytes()))
-            .await
-        {
-            warn!("WiFi join failed: {:?}, retrying...", err.status);
-            Timer::after(Duration::from_secs(1)).await;
-        }
 
         info!("waiting for link...");
         stack.wait_link_up().await;
@@ -134,7 +175,9 @@ async fn main(spawner: Spawner) {
 
         // Download and display image
         info!("Downloading image...");
-        match download_image(&stack).await {
+        // SAFETY: We're in single-threaded executor, no concurrent access to IMAGE_BUFFER
+        let image_buffer = unsafe { &mut *core::ptr::addr_of_mut!(IMAGE_BUFFER) };
+        match download_image(&stack, image_buffer).await {
             Ok(image_data) => {
                 // Validate image size before displaying
                 if image_data.len() != IMAGE_BUFFER_SIZE {
@@ -169,9 +212,64 @@ async fn main(spawner: Spawner) {
         control
             .set_power_management(cyw43::PowerManagementMode::SuperSave)
             .await;
-
-        // Sleep until next update cycle
-        info!("Sleeping for {} minutes until next update...", config::UPDATE_INTERVAL_MINUTES);
-        wait_minutes(config::UPDATE_INTERVAL_MINUTES).await;
     }
+}
+
+/// Wait for any button press and return button number (0, 1, or 2)
+async fn wait_for_button_press(keys: &Keys<'_>) -> u8 {
+    loop {
+        // Check KEY0 (active low with pull-up)
+        if keys.key0.is_low() {
+            // Debounce
+            Timer::after(Duration::from_millis(50)).await;
+            if keys.key0.is_low() {
+                // Wait for release
+                while keys.key0.is_low() {
+                    Timer::after(Duration::from_millis(10)).await;
+                }
+                return 0;
+            }
+        }
+
+        // Check KEY1 (active low with pull-up)
+        if keys.key1.is_low() {
+            // Debounce
+            Timer::after(Duration::from_millis(50)).await;
+            if keys.key1.is_low() {
+                // Wait for release
+                while keys.key1.is_low() {
+                    Timer::after(Duration::from_millis(10)).await;
+                }
+                return 1;
+            }
+        }
+
+        // Check KEY2 (active low with pull-up)
+        if keys.key2.is_low() {
+            // Debounce
+            Timer::after(Duration::from_millis(50)).await;
+            if keys.key2.is_low() {
+                // Wait for release
+                while keys.key2.is_low() {
+                    Timer::after(Duration::from_millis(10)).await;
+                }
+                return 2;
+            }
+        }
+
+        // Small delay to avoid busy-waiting
+        Timer::after(Duration::from_millis(100)).await;
+    }
+}
+
+/// Blink the onboard LED (controlled via CYW43)
+async fn blink_led(control: &mut cyw43::Control<'_>) {
+    info!("Blinking LED 5 times");
+    for _ in 0..5 {
+        control.gpio_set(0, true).await;
+        Timer::after(Duration::from_millis(200)).await;
+        control.gpio_set(0, false).await;
+        Timer::after(Duration::from_millis(200)).await;
+    }
+    info!("LED blink complete");
 }

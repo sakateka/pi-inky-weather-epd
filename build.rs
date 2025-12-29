@@ -44,15 +44,9 @@ fn main() {
         .expect("Missing wifi.password");
 
     // Extract image download settings
-    let server_ip = settings
-        .get_string("image.server_ip")
-        .expect("Missing image.server_ip");
-    let server_port = settings
-        .get::<u16>("image.server_port")
-        .expect("Missing image.server_port");
-    let api_path = settings
-        .get_string("image.api_path")
-        .expect("Missing image.api_path");
+    let image_url = settings
+        .get_string("image.url")
+        .expect("Missing image.url");
     let update_interval_minutes = settings
         .get::<u32>("image.update_interval_minutes")
         .expect("Missing image.update_interval_minutes");
@@ -83,14 +77,8 @@ pub const WIFI_SSID: &str = "{}";
 // WiFi password
 pub const WIFI_PASSWORD: &str = "{}";
 
-// Image server IP address
-pub const SERVER_IP: &str = "{}";
-
-// Image server port
-pub const SERVER_PORT: u16 = {};
-
-// Image API path
-pub const API_PATH: &str = "{}";
+// Image URL (full HTTP URL)
+pub const IMAGE_URL: &str = "{}";
 
 // Image update interval in minutes
 pub const UPDATE_INTERVAL_MINUTES: u32 = {};
@@ -106,9 +94,7 @@ pub const SPI_FREQUENCY: u32 = {};
 "#,
         wifi_ssid,
         wifi_password,
-        server_ip,
-        server_port,
-        api_path,
+        image_url,
         update_interval_minutes,
         epaper_width,
         epaper_height,
