@@ -28,4 +28,5 @@ precipitation_opacity_max = 0.60
 # intercepts (tests point the provider base URLs at the mock server).
 disable_weather_api_requests = false
 disable_png_output = true
+disable_raw_7color_output = true
 enable_debug_logs = false
