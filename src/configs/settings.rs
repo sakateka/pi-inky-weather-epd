@@ -136,6 +136,7 @@ pub struct Misc {
     pub template_path: PathBuf,
     pub generated_svg_name: PathBuf,
     pub generated_png_name: PathBuf,
+    pub generated_raw_name: PathBuf,
     pub svg_icons_directory: PathBuf,
     #[serde(default = "default_png_scale_factor")]
     pub png_scale_factor: f32,
@@ -159,6 +160,7 @@ pub struct RenderOptions {
 pub struct Debugging {
     pub disable_weather_api_requests: bool,
     pub disable_png_output: bool,
+    pub disable_raw_7color_output: bool,
     pub allow_pre_release_version: bool,
     pub enable_debug_logs: bool,
 }
@@ -313,6 +315,7 @@ impl DashboardSettings {
         logger::kvp("PNG Scale factor", self.misc.png_scale_factor);
         logger::kvp("Output SVG", self.misc.generated_svg_name.display());
         logger::kvp("Output PNG", self.misc.generated_png_name.display());
+        logger::kvp("Output RAW", self.misc.generated_raw_name.display());
         logger::kvp("Icons Directory", self.misc.svg_icons_directory.display());
 
         // Release/Update Settings
@@ -330,6 +333,10 @@ impl DashboardSettings {
             self.debugging.disable_weather_api_requests,
         );
         logger::kvp("Disable PNG Output", self.debugging.disable_png_output);
+        logger::kvp(
+            "Disable RAW 7color Output",
+            self.debugging.disable_raw_7color_output,
+        );
         logger::kvp("Enable Debug Logs", self.debugging.enable_debug_logs);
     }
 }
