@@ -118,6 +118,7 @@ pub struct Context {
     pub current_hour_relative_humidity: String,
     pub current_hour_relative_humidity_icon: String,
     pub current_day_date: String,
+    pub current_day_time: String,
     pub label_feels: String,
     pub label_like_tspan: String,
     pub feels_like_number_dx: String,
@@ -224,6 +225,7 @@ impl Context {
             current_hour_relative_humidity: NOT_AVAILABLE.to_string(),
             current_hour_relative_humidity_icon: not_available_icon_path.clone(),
             current_day_date: NOT_AVAILABLE.to_string(),
+            current_day_time: NOT_AVAILABLE.to_string(),
             label_feels: translate(TranslationKey::Feels, language).to_string(),
             label_like_tspan,
             feels_like_number_dx,
@@ -847,6 +849,10 @@ impl<'a> ContextBuilder<'a> {
             self.settings.render_options.date_format.as_ref(),
             self.settings.render_options.language,
         );
+        self.context.current_day_time = clock
+            .now_local(self.settings.misc.timezone)
+            .format(&self.settings.render_options.time_format)
+            .to_string();
         self.context.current_hour_rain_amount = current_hour.precipitation.amount().to_string();
 
         self

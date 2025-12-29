@@ -226,6 +226,7 @@ pub struct RenderOptions {
     #[serde(default)]
     pub hour_format: HourFormat,
     pub date_format: DateFormat,
+    pub time_format: String,
     pub use_moon_phase_instead_of_clear_night: bool,
     pub x_axis_always_at_min: bool,
     pub use_gust_instead_of_wind: bool,
@@ -465,6 +466,7 @@ impl DashboardSettings {
             format!("{}", self.render_options.hour_format),
         );
         logger::kvp("Date Format", &self.render_options.date_format);
+        logger::kvp("Time Format", &self.render_options.time_format);
         logger::kvp(
             "Use Moon Phase",
             self.render_options.use_moon_phase_instead_of_clear_night,
