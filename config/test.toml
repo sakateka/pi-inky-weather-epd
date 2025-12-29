@@ -26,4 +26,5 @@ prefer_weather_codes = false
 # Note: To run BOM tests, override with: APP_DEV__DISABLE_WEATHER_API_REQUESTS=true APP_API__PROVIDER=bom
 disable_weather_api_requests = false
 disable_png_output = true
+disable_raw_7color_output = true
 enable_debug_logs = false
