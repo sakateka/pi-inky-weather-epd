@@ -32,6 +32,26 @@ pub fn convert_svg_to_png(
     let svg_data = fs::read_to_string(input_path)
         .map_err(|e| Error::msg(format!("Failed to read SVG file: {e}")))?;
 
+    let png_bytes = convert_svg_to_png_bytes(&svg_data, scale_factor)?;
+
+    // Save the PNG file
+    fs::write(output_path, &png_bytes)
+        .map_err(|e| Error::msg(format!("Failed to save PNG: {e}")))?;
+
+    Ok(())
+}
+
+/// Converts SVG string to PNG bytes in memory.
+///
+/// # Arguments
+///
+/// * `svg_data` - SVG content as string
+/// * `scale_factor` - The scale factor to apply to the SVG
+///
+/// # Returns
+///
+/// * `Result<Vec<u8>, Error>` - PNG image data as bytes
+pub fn convert_svg_to_png_bytes(svg_data: &str, scale_factor: f32) -> Result<Vec<u8>, Error> {
     let mut font_db = fontdb::Database::new();
     load_fonts(&mut font_db);
 
@@ -41,7 +61,7 @@ pub fn convert_svg_to_png(
         ..Default::default()
     };
 
-    let tree = usvg::Tree::from_str(&svg_data, &opts)
+    let tree = usvg::Tree::from_str(svg_data, &opts)
         .map_err(|e| Error::msg(format!("Failed to parse SVG: {e}")))?;
 
     // Create a higher resolution canvas
@@ -57,12 +77,10 @@ pub fn convert_svg_to_png(
     // Render SVG onto the canvas with scaling
     resvg::render(&tree, transform, &mut pixmap.as_mut());
 
-    // Save the PNG file
+    // Encode PNG to bytes
     pixmap
-        .save_png(output_path)
-        .map_err(|e| Error::msg(format!("Failed to save PNG: {e}")))?;
-
-    Ok(())
+        .encode_png()
+        .map_err(|e| Error::msg(format!("Failed to encode PNG: {e}")))
 }
 
 /// 7-color e-ink display palette (RGB values)
@@ -106,6 +124,60 @@ fn depalette(color: [u8; 3]) -> u8 {
     best_index
 }
 
+/// Helper function to convert RGB image to raw 7-color format.
+///
+/// # Arguments
+///
+/// * `rgb_img` - RGB8 image
+///
+/// # Returns
+///
+/// * `Vec<u8>` - Raw 4-bit color data
+fn rgb_to_raw_7color(rgb_img: &image::RgbImage) -> Vec<u8> {
+    let (width, height) = rgb_img.dimensions();
+
+    // Calculate output buffer size (2 pixels per byte due to 4-bit packing)
+    let total_pixels = (width * height) as usize;
+    let output_size = total_pixels.div_ceil(2);
+    let mut output_buffer = Vec::with_capacity(output_size);
+
+    // Process pixels row by row, in pairs
+    for y in 0..height {
+        for i in 0..(width / 2) {
+            let x1 = i * 2;
+            let x2 = i * 2 + 1;
+
+            // Get first pixel (even x position)
+            let pixel1 = rgb_img.get_pixel(x1, y);
+            let color1 = [pixel1[0], pixel1[1], pixel1[2]];
+            let c1 = depalette(color1);
+
+            // Get second pixel (odd x position)
+            let pixel2 = rgb_img.get_pixel(x2, y);
+            let color2 = [pixel2[0], pixel2[1], pixel2[2]];
+            let c2 = depalette(color2);
+
+            // Pack two 4-bit indices into one byte
+            // c1 goes to high nibble, c2 goes to low nibble
+            let packed_byte = c2 | (c1 << 4);
+            output_buffer.push(packed_byte);
+        }
+
+        // Handle odd width - add padding pixel if necessary
+        if width % 2 == 1 {
+            let x = width - 1;
+            let pixel = rgb_img.get_pixel(x, y);
+            let color = [pixel[0], pixel[1], pixel[2]];
+            let c = depalette(color);
+            // Last pixel in high nibble, low nibble is 0 (black)
+            let packed_byte = c << 4;
+            output_buffer.push(packed_byte);
+        }
+    }
+
+    output_buffer
+}
+
 /// Converts a PNG image to raw 7-color format with 4-bit nibble packing.
 ///
 /// Each pixel is mapped to the closest color in the 7-color palette,
@@ -126,56 +198,35 @@ pub fn convert_png_to_raw_7color(input_path: &PathBuf, output_path: &PathBuf) ->
 
     // Convert to RGB8 format
     let rgb_img = img.to_rgb8();
-    let (width, height) = rgb_img.dimensions();
-
-    // Calculate output buffer size (2 pixels per byte due to 4-bit packing)
-    let total_pixels = (width * height) as usize;
-    let output_size = total_pixels.div_ceil(2); // Round up for odd number of pixels
-    let mut output_buffer = Vec::with_capacity(output_size);
-
-    // Process pixels row by row, in pairs (matching C implementation)
-    // C code: for (j = 0; j < y; j++) { for (i = 0; i < x / 2; i++) {
-    for y in 0..height {
-        for i in 0..(width / 2) {
-            let x1 = i * 2;
-            let x2 = i * 2 + 1;
-
-            // Get first pixel (even x position)
-            // C code: int c1 = depalette(data + n * (i * 2 + x * j));
-            let pixel1 = rgb_img.get_pixel(x1, y);
-            let color1 = [pixel1[0], pixel1[1], pixel1[2]];
-            let c1 = depalette(color1);
-
-            // Get second pixel (odd x position)
-            // C code: int c2 = depalette(data + n * (i * 2 + x * j + 1));
-            let pixel2 = rgb_img.get_pixel(x2, y);
-            let color2 = [pixel2[0], pixel2[1], pixel2[2]];
-            let c2 = depalette(color2);
-
-            // Pack two 4-bit indices into one byte
-            // C code: char uc = c2 | (c1 << 4);
-            // c1 goes to high nibble, c2 goes to low nibble
-            let packed_byte = c2 | (c1 << 4);
-            output_buffer.push(packed_byte);
-        }
-
-        // Handle odd width - add padding pixel if necessary
-        if width % 2 == 1 {
-            let x = width - 1;
-            let pixel = rgb_img.get_pixel(x, y);
-            let color = [pixel[0], pixel[1], pixel[2]];
-            let c = depalette(color);
-            // Last pixel in high nibble, low nibble is 0 (black)
-            let packed_byte = c << 4;
-            output_buffer.push(packed_byte);
-        }
-    }
+    let output_buffer = rgb_to_raw_7color(&rgb_img);
 
     // Write the packed data to the output file
     fs::write(output_path, &output_buffer)
         .map_err(|e| Error::msg(format!("Failed to write raw file: {e}")))?;
 
     Ok(())
+}
+
+/// Converts PNG bytes to raw 7-color format with 4-bit nibble packing.
+///
+/// Each pixel is mapped to the closest color in the 7-color palette,
+/// then packed as 4-bit values (2 pixels per byte).
+///
+/// # Arguments
+///
+/// * `png_data` - PNG image data as bytes
+///
+/// # Returns
+///
+/// * `Result<Vec<u8>, Error>` - Raw 4-bit color data
+pub fn convert_png_bytes_to_raw_7color(png_data: &[u8]) -> Result<Vec<u8>, Error> {
+    // Load the PNG image from bytes
+    let img = image::load_from_memory(png_data)
+        .map_err(|e| Error::msg(format!("Failed to load PNG from memory: {e}")))?;
+
+    // Convert to RGB8 format
+    let rgb_img = img.to_rgb8();
+    Ok(rgb_to_raw_7color(&rgb_img))
 }
 
 /// Loads fonts into the provided font database.
