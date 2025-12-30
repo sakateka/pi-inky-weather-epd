@@ -1,7 +1,7 @@
 use anyhow::Result;
 use pi_inky_weather_epd::configs::settings::DashboardSettings;
 
-#[cfg(not(feature = "cli"))]
+#[cfg(not(any(feature = "cli", feature = "web")))]
 use pi_inky_weather_epd::run_weather_dashboard;
 
 fn load_settings() -> DashboardSettings {
@@ -112,12 +112,42 @@ mod cli {
     }
 }
 
+// Web server mode
+#[cfg(feature = "web")]
+mod web {
+    use anyhow::Result;
+    use clap::Parser;
+    use pi_inky_weather_epd::web_server;
+
+    /// Pi Inky Weather Display - Web Server Mode
+    #[derive(Parser, Debug)]
+    #[command(name = "pi-inky-weather-epd")]
+    #[command(version, about, long_about = None)]
+    pub struct Args {
+        /// Port to run the web server on
+        #[arg(short, long, default_value = "8080")]
+        pub port: u16,
+    }
+
+    pub async fn run() -> Result<()> {
+        let args = Args::parse();
+        web_server::run_server(args.port).await?;
+        Ok(())
+    }
+}
+
 #[cfg(feature = "cli")]
 fn main() -> Result<()> {
     cli::run()
 }
 
-#[cfg(not(feature = "cli"))]
+#[cfg(feature = "web")]
+#[tokio::main]
+async fn main() -> Result<()> {
+    web::run().await
+}
+
+#[cfg(not(any(feature = "cli", feature = "web")))]
 fn main() -> Result<()> {
     let settings = load_settings();
     run_weather_dashboard(&settings)?;
