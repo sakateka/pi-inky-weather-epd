@@ -67,6 +67,26 @@ fn render_dashboard_template(
     dashboard_svg: String,
     output_svg_name: &Path,
 ) -> Result<(), Error> {
+    let rendered = render_dashboard_template_to_string(context, dashboard_svg)?;
+    let mut output = fs::File::create(output_svg_name)?;
+    output.write_all(rendered.as_bytes())?;
+    Ok(())
+}
+
+/// Renders dashboard template to SVG string in memory.
+///
+/// # Arguments
+///
+/// * `context` - The dashboard context
+/// * `dashboard_svg` - The SVG template string
+///
+/// # Returns
+///
+/// * `Result<String, Error>` - Rendered SVG as string
+fn render_dashboard_template_to_string(
+    context: &Context,
+    dashboard_svg: String,
+) -> Result<String, Error> {
     let mut tt = TinyTemplate::new();
     let tt_name = "dashboard";
 
@@ -75,13 +95,10 @@ fn render_dashboard_template(
         return Err(e.into());
     }
     tt.set_default_formatter(&format_unescaped);
+
     // Attempt to render the template
     match tt.render(tt_name, &context) {
-        Ok(rendered) => {
-            let mut output = fs::File::create(output_svg_name)?;
-            output.write_all(rendered.as_bytes())?;
-            Ok(())
-        }
+        Ok(rendered) => Ok(rendered),
         Err(e) => {
             logger::error(format!("Failed to render template: {e}"));
             Err(e.into())
@@ -187,4 +204,35 @@ pub fn generate_weather_dashboard_injection(
         }
     }
     Ok(())
+}
+
+/// Generate weather dashboard data in memory (for web server).
+///
+/// Returns the rendered SVG as a string without writing to filesystem.
+///
+/// # Arguments
+///
+/// * `clock` - The clock implementation to use for time-dependent operations
+/// * `input_template_name` - Path to the input SVG template file
+///
+/// # Returns
+///
+/// * `Result<String, Error>` - Rendered SVG as string
+pub fn generate_dashboard_svg_string(
+    clock: &dyn Clock,
+    input_template_name: &Path,
+) -> Result<String, Error> {
+    let mut context_builder = ContextBuilder::new();
+
+    let template_svg = match fs::read_to_string(input_template_name) {
+        Ok(svg) => svg,
+        Err(e) => {
+            logger::error(format!("Failed to read template file: {e}"));
+            return Err(e.into());
+        }
+    };
+
+    update_forecast_context(&mut context_builder, clock)?;
+
+    render_dashboard_template_to_string(&context_builder.context, template_svg)
 }
