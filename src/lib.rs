@@ -12,6 +12,9 @@ pub mod utils;
 pub mod weather;
 pub mod weather_dashboard;
 
+#[cfg(feature = "web")]
+pub mod web_server;
+
 use crate::configs::settings::DashboardSettings;
 use crate::weather_dashboard::generate_weather_dashboard;
 use anyhow::Error;
