@@ -264,7 +264,6 @@ pub fn subsection(title: impl Display) {
 }
 
 /// Log an info message
-#[allow(dead_code)]
 pub fn info(message: impl Display) {
     log_message(LogLevel::Info, message);
 }

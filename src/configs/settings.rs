@@ -204,7 +204,6 @@ pub struct Misc {
     pub generated_png_name: PathBuf,
     pub generated_raw_name: PathBuf,
     pub svg_icons_directory: PathBuf,
-    #[serde(default = "default_png_scale_factor")]
     pub png_scale_factor: f32,
 }
 
@@ -246,6 +245,13 @@ pub struct Dev {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct WebServer {
+    pub active_hours_start: u8,
+    pub active_hours_end: u8,
+    pub active_hours_interval_seconds: u32,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct DashboardSettings {
     pub release: Release,
     pub api: Api,
@@ -253,6 +259,7 @@ pub struct DashboardSettings {
     pub misc: Misc,
     pub render_options: RenderOptions,
     pub dev: Dev,
+    pub web_server: WebServer,
 }
 
 /// Validates cross-field constraints on release settings.
