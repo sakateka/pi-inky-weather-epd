@@ -61,6 +61,14 @@ generated_raw_name = "dashboard.raw"
 svg_icons_directory = "static/fill-svg-static/"
 png_scale_factor = 2.0
 
+[web_server]
+# X-Next-Delay header configuration for dashboard endpoints
+# During active hours (9:00-21:00), clients should refresh every hour
+# Outside active hours (21:00-9:00), clients should wait until the next active period starts
+active_hours_start = 9              # Start of active hours (24-hour format)
+active_hours_end = 21               # End of active hours (24-hour format)
+active_hours_interval_seconds = 3600  # Refresh interval during active hours (1 hour = 3600 seconds)
+
 [debugging]
 disable_weather_api_requests = false # Load cached data instead of making API requests (requires at least one successful run first)
 disable_png_output = false
