@@ -48,7 +48,7 @@ pub fn open_meteo_hourly_endpoint(settings: &DashboardSettings) -> Url {
         longitude={}&\
         hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,uv_index,wind_speed_10m,wind_gusts_10m,relative_humidity_2m,snowfall,cloud_cover,weather_code,is_day&\
         current=is_day&\
-        forecast_days=14&\
+        forecast_days=7&\
         timezone=UTC",
         base_url.as_str().trim_end_matches('/'),
         settings.api.latitude,
@@ -77,7 +77,7 @@ pub fn open_meteo_daily_endpoint(settings: &DashboardSettings) -> Url {
         longitude={}&\
         daily=sunrise,sunset,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,snowfall_sum,cloud_cover_mean,weather_code&\
         current=is_day&\
-        forecast_days=14&\
+        forecast_days=7&\
         past_days=1&\
         timezone=auto",
         base_url.as_str().trim_end_matches('/'),
