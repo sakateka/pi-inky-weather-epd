@@ -222,7 +222,12 @@ impl OpenMeteoHourlyResponse {
 
                 let uv_index = hourly_data.uv_index[i].round() as u16;
                 let relative_humidity = hourly_data.relative_humidity_2m[i];
-                let time = hourly_data.time[i];
+                let time = convert_location_local_to_display(
+                    hourly_data.time[i].naive_utc(),
+                    &response.timezone,
+                    chrono_tz::UTC,
+                )
+                .and_utc();
                 // Defaults to day (not night) if absent (see `Hourly::is_day`'s
                 // doc comment) — a stale pre-upgrade cache read on a network
                 // failure is the only way this is empty, and it self-corrects

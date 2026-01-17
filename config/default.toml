@@ -11,6 +11,7 @@ allow_pre_release_version = false
 latitude = -37.8136      # Melbourne, Australia
 longitude = 144.9631
 provider = "open_meteo"  # Options: bom, open_meteo
+timezone = "UTC"  # IANA timezone used for API timestamps and daily aggregations
 # API base URLs; normally left as-is (tests point these at a mock server)
 bom_base_url = "https://api.weather.bom.gov.au/v1/locations"
 open_meteo_base_url = "https://api.open-meteo.com"

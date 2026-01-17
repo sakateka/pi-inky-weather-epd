@@ -35,10 +35,9 @@ pub fn hourly_forecast_endpoint(settings: &DashboardSettings) -> Url {
     build_forecast_url(settings, "hourly")
 }
 
-/// Open-Meteo endpoint for HOURLY forecasts (uses UTC timezone)
+/// Open-Meteo endpoint for HOURLY forecasts
 ///
-/// Hourly data is requested in UTC and later converted to local time during processing.
-/// This ensures consistent timestamp handling across all timezones.
+/// Timestamps use the configured API timezone and are converted to UTC internally.
 pub fn open_meteo_hourly_endpoint(settings: &DashboardSettings) -> Url {
     let base_url = settings.api.open_meteo_base_url.clone();
 
@@ -49,25 +48,26 @@ pub fn open_meteo_hourly_endpoint(settings: &DashboardSettings) -> Url {
         hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,uv_index,wind_speed_10m,wind_gusts_10m,relative_humidity_2m,snowfall,cloud_cover,weather_code,is_day&\
         current=is_day&\
         forecast_days=7&\
-        timezone=UTC",
+        timezone={}",
         base_url.as_str().trim_end_matches('/'),
         settings.api.latitude,
-        settings.api.longitude
+        settings.api.longitude,
+        settings.api.timezone
     );
     Url::parse(&url).expect("Failed to construct Open Meteo hourly endpoint URL")
 }
 
-/// Open-Meteo endpoint for DAILY forecasts (uses auto timezone for correct aggregation)
+/// Open-Meteo endpoint for DAILY forecasts
 ///
 /// Daily aggregations (max/min temp, precipitation totals) are computed over the location's
-/// local 24-hour window (midnight-to-midnight in the coordinates' timezone), not UTC's 24-hour window.
+/// local 24-hour window (midnight-to-midnight in the configured timezone), not UTC's 24-hour window.
 /// This ensures "today's high" reflects the actual hottest hour in the user's local day.
 ///
 /// Uses `past_days=1` to include yesterday's data, ensuring users in timezones behind UTC
 /// still have access to "today's" forecast even after UTC midnight crosses into the next
 /// calendar day.
 ///
-/// The `timezone=auto` parameter automatically determines the timezone from the lat/lon coordinates.
+/// Aggregations use the configured API timezone.
 pub fn open_meteo_daily_endpoint(settings: &DashboardSettings) -> Url {
     let base_url = settings.api.open_meteo_base_url.clone();
 
@@ -79,10 +79,11 @@ pub fn open_meteo_daily_endpoint(settings: &DashboardSettings) -> Url {
         current=is_day&\
         forecast_days=7&\
         past_days=1&\
-        timezone=auto",
+        timezone={}",
         base_url.as_str().trim_end_matches('/'),
         settings.api.latitude,
-        settings.api.longitude
+        settings.api.longitude,
+        settings.api.timezone
     );
     Url::parse(&url).expect("Failed to construct Open Meteo daily endpoint URL")
 }
@@ -151,11 +152,11 @@ mod tests {
     }
 
     #[test]
-    fn open_meteo_daily_endpoint_uses_auto_timezone_and_past_days() {
+    fn open_meteo_daily_endpoint_uses_configured_timezone_and_past_days() {
         let settings = settings_with_coords(-37.8136, 144.9631);
         let url = open_meteo_daily_endpoint(&settings);
         let query = url.query().unwrap();
-        assert!(query.contains("timezone=auto"));
+        assert!(query.contains("timezone=UTC"));
         assert!(query.contains("past_days=1"));
         assert!(query.contains("daily=sunrise"));
     }

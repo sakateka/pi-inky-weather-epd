@@ -145,6 +145,8 @@ pub struct Api {
     pub provider: Providers,
     pub longitude: Longitude,
     pub latitude: Latitude,
+    #[serde(default)]
+    pub timezone: chrono_tz::Tz,
     /// Base URL for the BOM API; overridable so tests can point at a mock server.
     pub bom_base_url: Url,
     /// Base URL for the Open-Meteo API; overridable so tests can point at a mock server.
@@ -448,6 +450,7 @@ impl DashboardSettings {
         // API Settings
         logger::config_group("API Settings");
         logger::kvp("Provider", format!("{}", self.api.provider));
+        logger::kvp("API Timezone", self.api.timezone);
         logger::kvp(
             "Location",
             format!(
@@ -456,6 +459,7 @@ impl DashboardSettings {
                 self.api.longitude.into_inner()
             ),
         );
+        logger::kvp("Timezone", &self.api.timezone);
 
         // Render Options
         logger::config_group("Render Options");
