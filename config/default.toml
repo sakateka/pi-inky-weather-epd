@@ -5,11 +5,12 @@ update_interval_days = 7  # Set to 0 to disable auto-updating
 allow_pre_release_version = false
 
 [api]
-# Note: The weather data reflects the selected location’s conditions, but all times are displayed
-# according to your device’s (local) timezone. this should be fine for almost all users.
+# Note: The weather data reflects the selected location's conditions, but all times are displayed
+# according to your device's (local) timezone. this should be fine for almost all users.
 latitude = -37.8136      # Melbourne, Australia
 longitude = 144.9631
 provider = "open_meteo"  # Options: bom, open_meteo
+timezone = "UTC"  # IANA timezone (e.g., "America/New_York", "Europe/Moscow", "Australia/Melbourne")
 
 [colours]
 # Supported colours for 7.3" Inky Impression display:

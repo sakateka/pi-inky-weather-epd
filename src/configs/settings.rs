@@ -116,6 +116,7 @@ pub struct Api {
     pub provider: Providers,
     pub longitude: Longitude,
     pub latitude: Latitude,
+    pub timezone: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -306,6 +307,7 @@ impl DashboardSettings {
                 self.api.longitude.into_inner()
             ),
         );
+        logger::kvp("Timezone", &self.api.timezone);
 
         // Render Options
         logger::config_group("Render Options");

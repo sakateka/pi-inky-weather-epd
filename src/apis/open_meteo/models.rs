@@ -1,4 +1,5 @@
-use chrono::{DateTime, NaiveDate, NaiveDateTime, Utc};
+use chrono::{DateTime, NaiveDate, NaiveDateTime, TimeZone, Utc};
+use chrono_tz::Tz;
 use serde::{self, Deserialize, Deserializer};
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -342,15 +343,31 @@ where
         .collect()
 }
 
-/// Deserializes datetime string for hourly data (always UTC)
+/// Deserializes datetime string for hourly data
+/// Open-Meteo returns times in the timezone specified in the request
+/// We convert them to UTC for internal storage
 pub fn deserialize_short_datetime<'de, D>(deserializer: D) -> Result<DateTime<Utc>, D::Error>
 where
     D: Deserializer<'de>,
 {
+    use crate::CONFIG;
+
     let s: String = Deserialize::deserialize(deserializer)?;
-    NaiveDateTime::parse_from_str(&s, "%Y-%m-%dT%H:%M")
-        .map(|naive| DateTime::from_naive_utc_and_offset(naive, Utc))
-        .map_err(serde::de::Error::custom)
+    let naive =
+        NaiveDateTime::parse_from_str(&s, "%Y-%m-%dT%H:%M").map_err(serde::de::Error::custom)?;
+
+    // Parse the configured timezone
+    let tz: Tz = CONFIG.api.timezone.parse().map_err(|_| {
+        serde::de::Error::custom(format!("Invalid timezone: {}", CONFIG.api.timezone))
+    })?;
+
+    // Convert from configured timezone to UTC
+    let local_time = tz
+        .from_local_datetime(&naive)
+        .single()
+        .ok_or_else(|| serde::de::Error::custom("Ambiguous or invalid local time"))?;
+
+    Ok(local_time.with_timezone(&Utc))
 }
 
 pub fn deserialize_vec_iso8601_loose<'de, D>(
@@ -368,13 +385,25 @@ pub fn deserialize_vec_short_datetime<'de, D>(
 where
     D: Deserializer<'de>,
 {
+    use crate::CONFIG;
+
     let raw_vec: Vec<String> = Deserialize::deserialize(deserializer)?;
+
+    // Parse the configured timezone
+    let tz: Tz = CONFIG.api.timezone.parse().map_err(|_| {
+        serde::de::Error::custom(format!("Invalid timezone: {}", CONFIG.api.timezone))
+    })?;
+
     raw_vec
         .into_iter()
         .map(|s| {
-            NaiveDateTime::parse_from_str(&s, "%Y-%m-%dT%H:%M")
-                .map(|naive| DateTime::from_naive_utc_and_offset(naive, Utc))
-                .map_err(serde::de::Error::custom)
+            let naive = NaiveDateTime::parse_from_str(&s, "%Y-%m-%dT%H:%M")
+                .map_err(serde::de::Error::custom)?;
+            let local_time = tz
+                .from_local_datetime(&naive)
+                .single()
+                .ok_or_else(|| serde::de::Error::custom("Ambiguous or invalid local time"))?;
+            Ok(local_time.with_timezone(&Utc))
         })
         .collect()
 }
