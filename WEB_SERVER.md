@@ -92,3 +92,11 @@ Using a web browser:
 - All configuration settings from `config/` are respected
 - The server runs asynchronously using Tokio runtime
 - Each request generates a fresh dashboard with current weather data
+
+## Building for aarch64
+
+```bash
+sudo apt install gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+cargo build --release --features=web --target aarch64-unknown-linux-gnu
+```
