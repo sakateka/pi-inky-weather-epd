@@ -2,6 +2,15 @@ use chrono::{DateTime, NaiveDate, NaiveDateTime, TimeZone, Utc};
 use chrono_tz::Tz;
 use serde::{self, Deserialize, Deserializer};
 
+/// Open-Meteo returns JSON `null` for missing numeric values; treat as 0.0.
+fn deserialize_vec_nullable_f32<'de, D>(deserializer: D) -> Result<Vec<f32>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let values: Vec<Option<f32>> = Vec::deserialize(deserializer)?;
+    Ok(values.into_iter().map(|v| v.unwrap_or(0.0)).collect())
+}
+
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct OpenMeteoError {
     pub error: bool,
@@ -87,19 +96,33 @@ pub struct HourlyUnits {
 pub struct Hourly {
     #[serde(deserialize_with = "deserialize_vec_short_datetime")]
     pub time: Vec<DateTime<Utc>>,
-    #[serde(rename = "temperature_2m")]
+    #[serde(
+        rename = "temperature_2m",
+        deserialize_with = "deserialize_vec_nullable_f32"
+    )]
     pub temperature_2m: Vec<f32>,
-    #[serde(rename = "apparent_temperature")]
+    #[serde(
+        rename = "apparent_temperature",
+        deserialize_with = "deserialize_vec_nullable_f32"
+    )]
     pub apparent_temperature: Vec<f32>,
     #[serde(rename = "precipitation_probability")]
     pub precipitation_probability: Vec<u16>,
+    #[serde(deserialize_with = "deserialize_vec_nullable_f32")]
     pub precipitation: Vec<f32>,
+    #[serde(deserialize_with = "deserialize_vec_nullable_f32")]
     pub snowfall: Vec<f32>,
-    #[serde(rename = "uv_index")]
+    #[serde(rename = "uv_index", deserialize_with = "deserialize_vec_nullable_f32")]
     pub uv_index: Vec<f32>,
-    #[serde(rename = "wind_speed_10m")]
+    #[serde(
+        rename = "wind_speed_10m",
+        deserialize_with = "deserialize_vec_nullable_f32"
+    )]
     pub wind_speed_10m: Vec<f32>,
-    #[serde(rename = "wind_gusts_10m")]
+    #[serde(
+        rename = "wind_gusts_10m",
+        deserialize_with = "deserialize_vec_nullable_f32"
+    )]
     pub wind_gusts_10m: Vec<f32>,
     #[serde(rename = "relative_humidity_2m")]
     pub relative_humidity_2m: Vec<u16>,
@@ -139,15 +162,27 @@ pub struct Daily {
     /// When timezone=auto is used, these represent local time and must be converted using response.timezone
     #[serde(deserialize_with = "deserialize_vec_naive_datetime")]
     pub sunset: Vec<NaiveDateTime>,
-    #[serde(rename = "temperature_2m_max")]
+    #[serde(
+        rename = "temperature_2m_max",
+        deserialize_with = "deserialize_vec_nullable_f32"
+    )]
     pub temperature_2m_max: Vec<f32>,
-    #[serde(rename = "temperature_2m_min")]
+    #[serde(
+        rename = "temperature_2m_min",
+        deserialize_with = "deserialize_vec_nullable_f32"
+    )]
     pub temperature_2m_min: Vec<f32>,
-    #[serde(rename = "precipitation_sum")]
+    #[serde(
+        rename = "precipitation_sum",
+        deserialize_with = "deserialize_vec_nullable_f32"
+    )]
     pub precipitation_sum: Vec<f32>,
     #[serde(rename = "precipitation_probability_max")]
     pub precipitation_probability_max: Vec<u16>,
-    #[serde(rename = "snowfall_sum")]
+    #[serde(
+        rename = "snowfall_sum",
+        deserialize_with = "deserialize_vec_nullable_f32"
+    )]
     pub snowfall_sum: Vec<f32>,
     #[serde(rename = "cloud_cover_mean")]
     pub cloud_cover_mean: Vec<Option<u16>>,

@@ -410,3 +410,33 @@ fn test_zero_snowfall_handled_correctly() {
     assert!(!domain[0].precipitation.has_snow());
     assert!(!domain[0].precipitation.is_primarily_snow());
 }
+
+/// Open-Meteo returns null (not 0.0) for snowfall when there is no snow.
+#[test]
+fn test_null_snowfall_deserializes_as_zero() {
+    let json = r#"{
+        "latitude": -37.81,
+        "longitude": 144.96,
+        "timezone": "Australia/Melbourne",
+        "daily_units": {
+            "temperature_2m_max": "°C",
+            "temperature_2m_min": "°C",
+            "precipitation_sum": "mm",
+            "precipitation_probability_max": "%",
+            "snowfall_sum": "cm"
+        },
+        "daily": {
+            "time": ["2026-05-26"],
+            "sunrise": ["2026-05-26T07:00"],
+            "sunset": ["2026-05-26T17:00"],
+            "temperature_2m_max": [18.0],
+            "temperature_2m_min": [10.0],
+            "precipitation_sum": [0.0],
+            "precipitation_probability_max": [5],
+            "snowfall_sum": [null]
+        }
+    }"#;
+
+    let response: OpenMeteoDailyResponse = serde_json::from_str(json).unwrap();
+    assert_eq!(response.daily.snowfall_sum, vec![0.0]);
+}
