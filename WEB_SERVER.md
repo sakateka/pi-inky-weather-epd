@@ -96,7 +96,5 @@ Using a web browser:
 ## Building for aarch64
 
 ```bash
-sudo apt install gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
-export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
-cargo build --release --features=web --target aarch64-unknown-linux-gnu
+cross build --release --target aarch64-unknown-linux-musl --features=web
 ```
