@@ -398,7 +398,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::{format_localized_date, weekday_long, weekday_short, Language};
+    use super::{Language, format_localized_date, weekday_long, weekday_short};
     use chrono::{Local, TimeZone, Weekday};
 
     #[test]

@@ -96,10 +96,10 @@ pub fn init_file_log() {
 /// swallowed to avoid infinite recursion (we cannot call the logger from
 /// within the logger).
 fn write_to_file(text: &str) {
-    if let Some(mutex) = LOG_FILE.get() {
-        if let Ok(mut file) = mutex.lock() {
-            let _ = writeln!(file, "{text}");
-        }
+    if let Some(mutex) = LOG_FILE.get()
+        && let Ok(mut file) = mutex.lock()
+    {
+        let _ = writeln!(file, "{text}");
     }
 }
 
@@ -159,11 +159,7 @@ fn use_colours_stderr() -> bool {
 
 /// Helper to conditionally return ANSI code or empty string for stdout
 fn ansi(code: &'static str) -> &'static str {
-    if use_colours_stdout() {
-        code
-    } else {
-        ""
-    }
+    if use_colours_stdout() { code } else { "" }
 }
 
 /// Log levels with visual indicators

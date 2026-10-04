@@ -204,9 +204,15 @@ pub struct Misc {
     pub template_path: PathBuf,
     pub generated_svg_name: PathBuf,
     pub generated_png_name: PathBuf,
+    #[serde(default = "default_generated_raw_name")]
     pub generated_raw_name: PathBuf,
     pub svg_icons_directory: PathBuf,
+    #[serde(default = "default_png_scale_factor")]
     pub png_scale_factor: f32,
+}
+
+fn default_generated_raw_name() -> PathBuf {
+    "dashboard.raw".into()
 }
 
 fn default_png_scale_factor() -> f32 {
@@ -227,6 +233,7 @@ pub struct RenderOptions {
     #[serde(default)]
     pub hour_format: HourFormat,
     pub date_format: DateFormat,
+    #[serde(default = "default_time_format")]
     pub time_format: String,
     pub use_moon_phase_instead_of_clear_night: bool,
     pub x_axis_always_at_min: bool,
@@ -238,19 +245,35 @@ pub struct RenderOptions {
     pub precipitation_opacity_max: Opacity,
 }
 
+fn default_time_format() -> String {
+    "%T".into()
+}
+
 #[derive(Debug, Deserialize)]
 pub struct Dev {
     pub disable_weather_api_requests: bool,
     pub disable_png_output: bool,
+    #[serde(default)]
     pub disable_raw_7color_output: bool,
     pub enable_debug_logs: bool,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(default)]
 pub struct WebServer {
     pub active_hours_start: u8,
     pub active_hours_end: u8,
     pub active_hours_interval_seconds: u32,
+}
+
+impl Default for WebServer {
+    fn default() -> Self {
+        Self {
+            active_hours_start: 9,
+            active_hours_end: 21,
+            active_hours_interval_seconds: 3600,
+        }
+    }
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -268,6 +291,7 @@ pub struct DashboardSettings {
     pub misc: Misc,
     pub render_options: RenderOptions,
     pub dev: Dev,
+    #[serde(default)]
     pub web_server: WebServer,
 }
 
@@ -469,7 +493,6 @@ impl DashboardSettings {
                 self.api.longitude.into_inner()
             ),
         );
-        logger::kvp("Timezone", &self.api.timezone);
 
         // Render Options
         logger::config_group("Render Options");
@@ -558,8 +581,52 @@ impl DashboardSettings {
 
 #[cfg(test)]
 mod tests {
-    use super::{validate_release_cross_fields, DashboardSettings, UpdateIntervalDays};
+    use super::{DashboardSettings, UpdateIntervalDays, validate_release_cross_fields};
     use config::{Config, Environment, File, FileFormat};
+
+    #[test]
+    fn upstream_configs_default_missing_local_settings() {
+        let config = Config::builder()
+            .add_source(File::from_str(
+                include_str!("../../config/default.toml"),
+                FileFormat::Toml,
+            ))
+            .build()
+            .unwrap();
+        let mut json: serde_json::Value = config.try_deserialize().unwrap();
+        json.as_object_mut().unwrap().remove("network");
+        json.as_object_mut().unwrap().remove("web_server");
+        json["api"].as_object_mut().unwrap().remove("timezone");
+        json["misc"]
+            .as_object_mut()
+            .unwrap()
+            .remove("png_scale_factor");
+        json["misc"]
+            .as_object_mut()
+            .unwrap()
+            .remove("generated_raw_name");
+        json["render_options"]
+            .as_object_mut()
+            .unwrap()
+            .remove("time_format");
+        json["dev"]
+            .as_object_mut()
+            .unwrap()
+            .remove("disable_raw_7color_output");
+        let settings: DashboardSettings = serde_json::from_value(json).unwrap();
+        assert!(settings.network.proxy.is_none());
+        assert_eq!(settings.api.timezone, chrono_tz::UTC);
+        assert_eq!(settings.misc.png_scale_factor, 2.0);
+        assert_eq!(
+            settings.misc.generated_raw_name,
+            std::path::Path::new("dashboard.raw")
+        );
+        assert_eq!(settings.render_options.time_format, "%T");
+        assert!(!settings.dev.disable_raw_7color_output);
+        assert_eq!(settings.web_server.active_hours_start, 9);
+        assert_eq!(settings.web_server.active_hours_end, 21);
+        assert_eq!(settings.web_server.active_hours_interval_seconds, 3600);
+    }
 
     #[test]
     fn network_proxy_is_optional_in_existing_configs() {

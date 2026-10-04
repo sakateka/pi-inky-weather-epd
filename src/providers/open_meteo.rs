@@ -8,14 +8,14 @@ use crate::{
     apis::open_meteo::models::{OpenMeteoDailyResponse, OpenMeteoError, OpenMeteoHourlyResponse},
     configs::settings::DashboardSettings,
     constants::{
-        open_meteo_daily_endpoint, open_meteo_hourly_endpoint, DAILY_CACHE_SUFFIX,
-        HOURLY_CACHE_SUFFIX,
+        DAILY_CACHE_SUFFIX, HOURLY_CACHE_SUFFIX, open_meteo_daily_endpoint,
+        open_meteo_hourly_endpoint,
     },
     domain::models::{DailyForecast, HourlyForecast},
     errors::DashboardError,
     providers::{
-        fetcher::{FetchOutcome, Fetcher},
         FetchResult, WeatherProvider,
+        fetcher::{FetchOutcome, Fetcher},
     },
 };
 

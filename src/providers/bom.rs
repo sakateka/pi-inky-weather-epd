@@ -5,13 +5,13 @@ use crate::{
     apis::bom::models::{BomError, DailyForecastResponse, HourlyForecastResponse},
     configs::settings::DashboardSettings,
     constants::{
-        daily_forecast_endpoint, hourly_forecast_endpoint, DAILY_CACHE_SUFFIX, HOURLY_CACHE_SUFFIX,
+        DAILY_CACHE_SUFFIX, HOURLY_CACHE_SUFFIX, daily_forecast_endpoint, hourly_forecast_endpoint,
     },
     domain::models::{DailyForecast, HourlyForecast},
     errors::DashboardError,
     providers::{
-        fetcher::{FetchOutcome, Fetcher},
         FetchResult, WeatherProvider,
+        fetcher::{FetchOutcome, Fetcher},
     },
 };
 

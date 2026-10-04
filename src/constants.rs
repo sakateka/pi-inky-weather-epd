@@ -59,9 +59,8 @@ pub fn open_meteo_hourly_endpoint(settings: &DashboardSettings) -> Url {
 
 /// Open-Meteo endpoint for DAILY forecasts
 ///
-/// Daily aggregations (max/min temp, precipitation totals) are computed over the location's
-/// local 24-hour window (midnight-to-midnight in the configured timezone), not UTC's 24-hour window.
-/// This ensures "today's high" reflects the actual hottest hour in the user's local day.
+/// Daily aggregations (max/min temp, precipitation totals) cover midnight-to-midnight
+/// in the configured API timezone.
 ///
 /// Uses `past_days=1` to include yesterday's data, ensuring users in timezones behind UTC
 /// still have access to "today's" forecast even after UTC midnight crosses into the next
@@ -96,6 +95,27 @@ pub fn not_available_icon_path(settings: &DashboardSettings) -> PathBuf {
 mod tests {
     use super::*;
     use crate::configs::settings::{Latitude, Longitude};
+
+    #[test]
+    fn open_meteo_endpoints_preserve_timezone_and_seven_day_forecast() {
+        let mut settings = DashboardSettings::load_test_config().unwrap();
+        settings.api.timezone = chrono_tz::Europe::Moscow;
+        for endpoint in [
+            open_meteo_daily_endpoint(&settings),
+            open_meteo_hourly_endpoint(&settings),
+        ] {
+            assert!(
+                endpoint
+                    .query_pairs()
+                    .any(|(key, value)| key == "timezone" && value == "Europe/Moscow")
+            );
+            assert!(
+                endpoint
+                    .query_pairs()
+                    .any(|(key, value)| key == "forecast_days" && value == "7")
+            );
+        }
+    }
 
     fn settings_with_coords(lat: f64, lon: f64) -> DashboardSettings {
         let mut settings = DashboardSettings::load_test_config().unwrap();

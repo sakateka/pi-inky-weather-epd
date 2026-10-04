@@ -1,25 +1,28 @@
-use crate::clock::SystemClock;
+use crate::clock::{Clock, SystemClock};
+use crate::configs::settings::DashboardSettings;
 use crate::logger;
 use crate::utils::{convert_png_bytes_to_raw_7color, convert_svg_to_png_bytes};
 use crate::weather_dashboard::generate_dashboard_svg_string;
-use crate::CONFIG;
 use axum::{
-    extract::Path,
-    http::{header, HeaderMap, StatusCode},
+    Router,
+    extract::{Path, State},
+    http::{HeaderMap, StatusCode, header},
     response::{IntoResponse, Response},
     routing::get,
-    Router,
 };
-use chrono::{Local, Timelike};
-use std::path::PathBuf;
+use chrono::Timelike;
+use std::path::{Component, PathBuf};
+use std::sync::Arc;
 use std::time::Duration;
 
-pub async fn run_server(port: u16) -> Result<(), anyhow::Error> {
+pub async fn run_server(settings: DashboardSettings, port: u16) -> Result<(), anyhow::Error> {
+    logger::init(settings.dev.enable_debug_logs, settings.misc.timezone);
     let app = Router::new()
         .route("/dashboard.svg", get(serve_svg))
         .route("/dashboard.png", get(serve_png))
         .route("/dashboard.raw", get(serve_raw))
-        .route("/static/*path", get(serve_static));
+        .route("/static/*path", get(serve_static))
+        .with_state(Arc::new(settings));
 
     let addr = format!("0.0.0.0:{}", port);
     println!("Starting web server on {}", addr);
@@ -31,12 +34,12 @@ pub async fn run_server(port: u16) -> Result<(), anyhow::Error> {
 }
 
 /// Calculate the X-Next-Delay header value in seconds based on current time and configuration
-fn calculate_next_delay() -> u32 {
-    let active_start = CONFIG.web_server.active_hours_start;
-    let active_end = CONFIG.web_server.active_hours_end;
-    let active_interval = CONFIG.web_server.active_hours_interval_seconds;
+fn calculate_next_delay(settings: &DashboardSettings, clock: &dyn Clock) -> u32 {
+    let active_start = settings.web_server.active_hours_start;
+    let active_end = settings.web_server.active_hours_end;
+    let active_interval = settings.web_server.active_hours_interval_seconds;
 
-    let now = Local::now();
+    let now = clock.now_local(settings.misc.timezone);
     let current_hour = now.hour() as u8;
 
     // Check if we're in active hours (9:00-21:00)
@@ -51,7 +54,7 @@ fn calculate_next_delay() -> u32 {
         let current_second = now.second();
 
         // Calculate seconds until the start of the next active period
-        let seconds_until_target = if current_hour < target_hour {
+        if current_hour < target_hour {
             // Same day - calculate time until active_start
             let hours_diff = target_hour - current_hour;
             (hours_diff * 3600) - (current_minute * 60) - current_second
@@ -61,18 +64,16 @@ fn calculate_next_delay() -> u32 {
             let seconds_until_midnight =
                 (hours_until_midnight * 3600) - (current_minute * 60) - current_second;
             seconds_until_midnight + (target_hour * 3600)
-        };
-
-        seconds_until_target
+        }
     }
 }
 
 /// Create headers with X-Next-Delay for dashboard responses
-fn create_dashboard_headers(content_type: &str) -> HeaderMap {
+fn create_dashboard_headers(settings: &DashboardSettings, content_type: &str) -> HeaderMap {
     let mut headers = HeaderMap::new();
     headers.insert(header::CONTENT_TYPE, content_type.parse().unwrap());
 
-    let next_delay = calculate_next_delay();
+    let next_delay = calculate_next_delay(settings, &SystemClock);
     logger::info(format!(
         "Calculated next delay: {:?}",
         Duration::from_secs(next_delay.into())
@@ -82,73 +83,58 @@ fn create_dashboard_headers(content_type: &str) -> HeaderMap {
     headers
 }
 
-async fn serve_svg() -> Response {
-    match generate_svg_data() {
-        Ok(svg_data) => (
-            StatusCode::OK,
-            create_dashboard_headers("image/svg+xml"),
-            svg_data,
-        )
-            .into_response(),
+async fn serve_svg(State(settings): State<Arc<DashboardSettings>>) -> Response {
+    serve_dashboard(settings, "image/svg+xml", generate_svg_data).await
+}
+
+async fn serve_png(State(settings): State<Arc<DashboardSettings>>) -> Response {
+    serve_dashboard(settings, "image/png", generate_png_data).await
+}
+
+async fn serve_raw(State(settings): State<Arc<DashboardSettings>>) -> Response {
+    serve_dashboard(settings, "application/octet-stream", generate_raw_data).await
+}
+
+async fn serve_dashboard(
+    settings: Arc<DashboardSettings>,
+    content_type: &'static str,
+    generate: fn(&DashboardSettings) -> Result<Vec<u8>, anyhow::Error>,
+) -> Response {
+    let render_settings = Arc::clone(&settings);
+    // Blocking HTTP clients and rasterization must run outside Tokio's async workers.
+    let result = tokio::task::spawn_blocking(move || generate(&render_settings))
+        .await
+        .unwrap_or_else(|e| Err(e.into()));
+    match result {
+        Ok(data) => (create_dashboard_headers(&settings, content_type), data).into_response(),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Failed to generate SVG: {}", e),
+            format!("Failed to generate dashboard: {e}"),
         )
             .into_response(),
     }
 }
 
-async fn serve_png() -> Response {
-    match generate_png_data() {
-        Ok(png_data) => (
-            StatusCode::OK,
-            create_dashboard_headers("image/png"),
-            png_data,
-        )
-            .into_response(),
-        Err(e) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Failed to generate PNG: {}", e),
-        )
-            .into_response(),
-    }
+fn generate_svg_data(settings: &DashboardSettings) -> Result<Vec<u8>, anyhow::Error> {
+    generate_dashboard_svg_string(settings, &SystemClock).map(String::into_bytes)
 }
 
-async fn serve_raw() -> Response {
-    match generate_raw_data() {
-        Ok(raw_data) => (
-            StatusCode::OK,
-            create_dashboard_headers("application/octet-stream"),
-            raw_data,
-        )
-            .into_response(),
-        Err(e) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Failed to generate RAW: {}", e),
-        )
-            .into_response(),
-    }
+fn generate_png_data(settings: &DashboardSettings) -> Result<Vec<u8>, anyhow::Error> {
+    let svg_data = generate_dashboard_svg_string(settings, &SystemClock)?;
+    convert_svg_to_png_bytes(&svg_data, settings.misc.png_scale_factor)
 }
 
-fn generate_svg_data() -> Result<String, anyhow::Error> {
-    let clock = SystemClock;
-    let input_template_name = &CONFIG.misc.template_path;
-    generate_dashboard_svg_string(&clock, input_template_name)
-}
-
-fn generate_png_data() -> Result<Vec<u8>, anyhow::Error> {
-    let svg_data = generate_svg_data()?;
-    let png_bytes = convert_svg_to_png_bytes(&svg_data, CONFIG.misc.png_scale_factor)?;
-    Ok(png_bytes)
-}
-
-fn generate_raw_data() -> Result<Vec<u8>, anyhow::Error> {
-    let png_data = generate_png_data()?;
-    let raw_bytes = convert_png_bytes_to_raw_7color(&png_data)?;
-    Ok(raw_bytes)
+fn generate_raw_data(settings: &DashboardSettings) -> Result<Vec<u8>, anyhow::Error> {
+    convert_png_bytes_to_raw_7color(&generate_png_data(settings)?)
 }
 
 async fn serve_static(Path(path): Path<String>) -> Response {
+    if std::path::Path::new(&path)
+        .components()
+        .any(|component| !matches!(component, Component::Normal(_)))
+    {
+        return StatusCode::NOT_FOUND.into_response();
+    }
     let file_path = PathBuf::from("static").join(&path);
 
     match tokio::fs::read(&file_path).await {
@@ -175,5 +161,26 @@ async fn serve_static(Path(path): Path<String>) -> Response {
                 .into_response()
         }
         Err(_) => (StatusCode::NOT_FOUND, format!("File not found: {}", path)).into_response(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::clock::FixedClock;
+
+    #[test]
+    fn refresh_delay_uses_the_configured_timezone_and_clock() {
+        let mut settings = DashboardSettings::load_test_config().unwrap();
+        settings.misc.timezone = chrono_tz::Europe::Moscow;
+        for (timestamp, expected) in [
+            ("2025-01-01T05:59:30Z", 30),
+            ("2025-01-01T06:00:00Z", 3600),
+            ("2025-01-01T17:59:59Z", 3600),
+            ("2025-01-01T18:00:00Z", 12 * 3600),
+        ] {
+            let clock = FixedClock::from_rfc3339(timestamp).unwrap();
+            assert_eq!(calculate_next_delay(&settings, &clock), expected);
+        }
     }
 }

@@ -157,40 +157,52 @@ mod tests {
             "API unreachable -> Stale Data"
         );
         assert!(network_error.long_description().contains("unable to reach"));
-        assert!(network_error
-            .long_description()
-            .contains("Connection failed"));
+        assert!(
+            network_error
+                .long_description()
+                .contains("Connection failed")
+        );
 
         let api_error = DashboardError::ApiError {
             details: "HTTP 500".to_string(),
         };
         assert_eq!(api_error.short_description(), "API error -> Stale Data");
-        assert!(api_error
-            .long_description()
-            .contains("API returned an error"));
+        assert!(
+            api_error
+                .long_description()
+                .contains("API returned an error")
+        );
         assert!(api_error.long_description().contains("HTTP 500"));
 
         let incomplete_error = DashboardError::IncompleteData {
             details: "missing hourly entries".to_string(),
         };
         assert_eq!(incomplete_error.short_description(), "Incomplete Data");
-        assert!(incomplete_error
-            .long_description()
-            .contains("Received Incomplete data"));
-        assert!(incomplete_error
-            .long_description()
-            .contains("missing hourly entries"));
+        assert!(
+            incomplete_error
+                .long_description()
+                .contains("Received Incomplete data")
+        );
+        assert!(
+            incomplete_error
+                .long_description()
+                .contains("missing hourly entries")
+        );
 
         let update_failed = DashboardError::UpdateFailed {
             details: "checksum mismatch".to_string(),
         };
         assert_eq!(update_failed.short_description(), "Update Failed");
-        assert!(update_failed
-            .long_description()
-            .contains("failed to update"));
-        assert!(update_failed
-            .long_description()
-            .contains("checksum mismatch"));
+        assert!(
+            update_failed
+                .long_description()
+                .contains("failed to update")
+        );
+        assert!(
+            update_failed
+                .long_description()
+                .contains("checksum mismatch")
+        );
     }
 
     #[test]

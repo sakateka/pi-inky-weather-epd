@@ -10,7 +10,7 @@ use anyhow::Error;
 use std::fs;
 use std::io::Write;
 use std::path::Path;
-use tinytemplate::{format_unescaped, TinyTemplate};
+use tinytemplate::{TinyTemplate, format_unescaped};
 pub use utils::*;
 
 fn update_forecast_context(
@@ -198,7 +198,7 @@ pub fn generate_weather_dashboard_injection(
         Err(e) => {
             logger::error(format!("Failed to read template file: {e}"));
             logger::detail(format!("Current directory: {}", current_dir.display()));
-            logger::detail(format!("Template path: {}", &input_template_name.display()));
+            logger::detail(format!("Template path: {}", input_template_name.display()));
             return Err(e.into());
         }
     };
@@ -237,21 +237,23 @@ pub fn generate_weather_dashboard_injection(
                 .display()
         ));
 
-        if !CONFIG.dev.disable_raw_7color_output {
+        if !settings.dev.disable_raw_7color_output {
             logger::subsection("Converting PNG to RAW 4bit-color image data");
             // Ensure the parent directory for the generated RAW exists
-            if let Some(raw_parent) = CONFIG.misc.generated_raw_name.parent() {
+            if let Some(raw_parent) = settings.misc.generated_raw_name.parent() {
                 std::fs::create_dir_all(raw_parent)?;
             }
 
             convert_png_to_raw_7color(
-                &CONFIG.misc.generated_png_name,
-                &CONFIG.misc.generated_raw_name,
+                &settings.misc.generated_png_name,
+                &settings.misc.generated_raw_name,
             )?;
 
             logger::success(format!(
                 "RAW saved: {}",
-                current_dir.join(&CONFIG.misc.generated_raw_name).display()
+                current_dir
+                    .join(&settings.misc.generated_raw_name)
+                    .display()
             ));
         }
     }
@@ -265,18 +267,19 @@ pub fn generate_weather_dashboard_injection(
 /// # Arguments
 ///
 /// * `clock` - The clock implementation to use for time-dependent operations
-/// * `input_template_name` - Path to the input SVG template file
+/// * `settings` - Dashboard settings, including the SVG template path
 ///
 /// # Returns
 ///
 /// * `Result<String, Error>` - Rendered SVG as string
 pub fn generate_dashboard_svg_string(
+    settings: &DashboardSettings,
     clock: &dyn Clock,
-    input_template_name: &Path,
 ) -> Result<String, Error> {
-    let mut context_builder = ContextBuilder::new();
+    logger::init(settings.dev.enable_debug_logs, settings.misc.timezone);
+    let mut context_builder = ContextBuilder::new(settings, clock);
 
-    let template_svg = match fs::read_to_string(input_template_name) {
+    let template_svg = match fs::read_to_string(&settings.misc.template_path) {
         Ok(svg) => svg,
         Err(e) => {
             logger::error(format!("Failed to read template file: {e}"));
@@ -284,7 +287,7 @@ pub fn generate_dashboard_svg_string(
         }
     };
 
-    update_forecast_context(&mut context_builder, clock)?;
+    update_forecast_context(settings, &mut context_builder, clock)?;
 
     render_dashboard_template_to_string(&context_builder.context, template_svg)
 }

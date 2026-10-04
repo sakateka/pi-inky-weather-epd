@@ -171,8 +171,8 @@ pub struct DailyUnits {
 #[serde(rename_all = "camelCase")]
 pub struct Daily {
     pub time: Vec<NaiveDate>,
-    /// Sunrise times as NaiveDateTime, in the forecast location's timezone
-    /// (requested via `timezone=auto`) — see `OpenMeteoDailyResponse::timezone`
+    /// Sunrise times as NaiveDateTime, in the response's timezone
+    /// — see `OpenMeteoDailyResponse::timezone`
     /// and `into_domain`, which converts these to the display timezone.
     #[serde(deserialize_with = "deserialize_vec_naive_datetime")]
     pub sunrise: Vec<NaiveDateTime>,
@@ -290,8 +290,7 @@ impl OpenMeteoHourlyResponse {
     }
 }
 
-/// Converts a naive datetime returned by Open-Meteo's `timezone=auto` daily
-/// endpoint — which is in the forecast location's timezone, named by
+/// Converts a naive datetime returned by Open-Meteo in the timezone named by
 /// `location_tz_name` (the response's own `timezone` field) — into the
 /// configured display timezone.
 ///
@@ -309,7 +308,7 @@ fn convert_location_local_to_display(
     let Ok(location_tz) = location_tz_name.parse::<chrono_tz::Tz>() else {
         crate::logger::warning(format!(
             "Open-Meteo returned unrecognized timezone '{location_tz_name}'; \
-             using sunrise/sunset time unconverted"
+             using time unconverted"
         ));
         return naive;
     };
@@ -319,7 +318,7 @@ fn convert_location_local_to_display(
         chrono::LocalResult::Ambiguous(dt, _) => dt.with_timezone(&display_tz).naive_local(),
         chrono::LocalResult::None => {
             crate::logger::warning(format!(
-                "Sunrise/sunset time {naive} does not exist in timezone \
+                "Time {naive} does not exist in timezone \
                  '{location_tz_name}' (DST gap); using unconverted"
             ));
             naive
@@ -385,8 +384,7 @@ impl OpenMeteoDailyResponse {
                 };
 
                 let astronomical = {
-                    // sunrise/sunset arrive in the forecast location's timezone
-                    // (response.timezone, from timezone=auto); convert to the
+                    // sunrise/sunset arrive in response.timezone; convert to the
                     // display timezone so they agree with every other rendered time.
                     let sunrise = response.daily.sunrise.get(i).copied().map(|dt| {
                         convert_location_local_to_display(
@@ -446,7 +444,7 @@ impl OpenMeteoDailyResponse {
 // ============================================================================
 
 /// Deserializes a vector of datetime strings to NaiveDateTime (no timezone)
-/// Used for sunrise/sunset times when timezone=auto, which returns local times
+/// Used for sunrise/sunset times in the response's timezone
 pub fn deserialize_vec_naive_datetime<'de, D>(
     deserializer: D,
 ) -> Result<Vec<NaiveDateTime>, D::Error>
@@ -503,6 +501,23 @@ where
 mod tests {
     use super::*;
     use std::fs;
+
+    #[test]
+    fn hourly_times_use_the_response_timezone_when_loading_cached_data() {
+        let mut json: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../tests/fixtures/open_meteo_hourly_forecast.json"
+        ))
+        .unwrap();
+        json["timezone"] = "Europe/Moscow".into();
+        json["hourly"]["time"][0] = "2025-10-25T00:00".into();
+        let response: OpenMeteoHourlyResponse = serde_json::from_value(json).unwrap();
+        let settings = crate::configs::settings::DashboardSettings::load_test_config().unwrap();
+        let forecast = response.into_domain(&settings);
+        assert_eq!(
+            forecast[0].time,
+            "2025-10-24T21:00:00Z".parse::<DateTime<Utc>>().unwrap()
+        );
+    }
 
     #[test]
     fn null_snowfall_deserializes_as_zero() {

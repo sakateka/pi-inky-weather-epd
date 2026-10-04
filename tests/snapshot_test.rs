@@ -726,7 +726,7 @@ mod prefer_codes {
         let clock = FixedClock::from_rfc3339(time_rfc3339).expect("invalid RFC3339 time");
         let output_svg_name = Path::new(output_path);
 
-        let svg = tokio::task::spawn_blocking(move || {
+        tokio::task::spawn_blocking(move || {
             generate_weather_dashboard_injection(&settings, &clock, output_svg_name)
                 .expect("dashboard generation failed");
             let svg = fs::read_to_string(output_svg_name).expect("failed to read generated SVG");
@@ -737,9 +737,7 @@ mod prefer_codes {
             svg
         })
         .await
-        .expect("task panicked");
-
-        svg
+        .expect("task panicked")
     }
 
     // ---------------------------------------------------------------------------

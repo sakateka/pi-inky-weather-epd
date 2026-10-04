@@ -3,8 +3,8 @@ mod helpers;
 use anyhow::Error;
 use chrono::{Duration, TimeZone, Utc};
 use pi_inky_weather_epd::{
-    update::{read_update_status_from_dir, write_update_status, UpdateService},
     FixedClock,
+    update::{UpdateService, read_update_status_from_dir, write_update_status},
 };
 use std::fs;
 use std::path::PathBuf;

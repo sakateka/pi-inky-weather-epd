@@ -31,7 +31,7 @@ fn fetch_date() -> NaiveDate {
 
 /// Minimal Daily response JSON covering `num_days` consecutive dates from
 /// `start_date`, matching `open_meteo_daily_endpoint`'s current
-/// `forecast_days=14, past_days=1` (15 dates total).
+/// `forecast_days=7, past_days=1` (8 dates total).
 fn build_daily_json(start_date: NaiveDate, num_days: u64) -> String {
     let dates: Vec<String> = (0..num_days)
         .map(|i| (start_date + Days::new(i)).format("%Y-%m-%d").to_string())
@@ -68,7 +68,7 @@ fn build_daily_json(start_date: NaiveDate, num_days: u64) -> String {
 
 /// Minimal Hourly response JSON covering `num_hours` consecutive UTC hours
 /// from `start`, matching `open_meteo_hourly_endpoint`'s current
-/// `forecast_days=14` (14 * 24 = 336 hours).
+/// `forecast_days=7` (7 * 24 = 168 hours).
 fn build_hourly_json(start: chrono::DateTime<Utc>, num_hours: i64) -> String {
     let times: Vec<String> = (0..num_hours)
         .map(|i| {
@@ -146,14 +146,14 @@ async fn probe_at(now: chrono::DateTime<Utc>) -> Probe {
         let cache_dir = settings.misc.weather_data_cache_path.clone();
         std::fs::write(
             cache_dir.join("open_meteo_daily_forecast.json"),
-            build_daily_json(fetch_date() - Days::new(1), 15),
+            build_daily_json(fetch_date() - Days::new(1), 8),
         )
         .expect("failed to seed daily cache");
         std::fs::write(
             cache_dir.join("open_meteo_hourly_forecast.json"),
             build_hourly_json(
                 Utc.from_utc_datetime(&fetch_date().and_hms_opt(0, 0, 0).unwrap()),
-                14 * 24,
+                7 * 24,
             ),
         )
         .expect("failed to seed hourly cache");
@@ -198,12 +198,12 @@ fn noon_utc_on(date: NaiveDate) -> chrono::DateTime<Utc> {
     at_hour_utc(date, 12)
 }
 
-/// Daily cache covers `fetch_date - 1` through `fetch_date + 13` (15 dates:
-/// `past_days=1` + `forecast_days=14`). day7 is `today + 6`, so the last day
-/// this cache can still populate is `today == fetch_date + 7`.
+/// Daily cache covers `fetch_date - 1` through `fetch_date + 6` (8 dates:
+/// `past_days=1` + `forecast_days=7`). day7 is `today + 6`, so the last day
+/// this cache can still populate is `today == fetch_date`.
 #[tokio::test]
 async fn day7_still_populated_at_the_edge_of_the_daily_grace_period() {
-    let today = fetch_date() + Days::new(7);
+    let today = fetch_date();
     let probe = probe_at(noon_utc_on(today)).await;
 
     assert_ne!(probe.day7_name, "Unknown");
@@ -212,18 +212,18 @@ async fn day7_still_populated_at_the_edge_of_the_daily_grace_period() {
 
 #[tokio::test]
 async fn day7_goes_not_available_one_day_past_the_daily_grace_period() {
-    let today = fetch_date() + Days::new(8);
+    let today = fetch_date() + Days::new(1);
     let probe = probe_at(noon_utc_on(today)).await;
 
     assert_eq!(probe.day7_maxtemp, NOT_AVAILABLE);
 }
 
-/// Hourly cache covers 336 consecutive hours from `fetch_date` 00:00 UTC
-/// (`forecast_days=14`, no `past_days`), so the last hour it can still
-/// resolve a forecast window from is `fetch_date + 13` 23:00 UTC.
+/// Hourly cache covers 168 consecutive hours from `fetch_date` 00:00 UTC
+/// (`forecast_days=7`, no `past_days`), so the last hour it can still
+/// resolve a forecast window from is `fetch_date + 6` 23:00 UTC.
 #[tokio::test]
 async fn current_hour_still_populated_within_the_hourly_grace_period() {
-    let now = noon_utc_on(fetch_date() + Days::new(13));
+    let now = noon_utc_on(fetch_date() + Days::new(6));
     let probe = probe_at(now).await;
 
     assert_ne!(probe.current_hour_actual_temp, NOT_AVAILABLE);
@@ -231,9 +231,9 @@ async fn current_hour_still_populated_within_the_hourly_grace_period() {
 
 #[tokio::test]
 async fn current_hour_goes_not_available_past_the_hourly_grace_period() {
-    // Last cached hour is fetch_date + 13, 23:00 UTC; one hour past that has
+    // Last cached hour is fetch_date + 6, 23:00 UTC; one hour past that has
     // no entry left for `find_forecast_window` to pick up.
-    let now = at_hour_utc(fetch_date() + Days::new(14), 0);
+    let now = at_hour_utc(fetch_date() + Days::new(7), 0);
     let probe = probe_at(now).await;
 
     assert_eq!(probe.current_hour_actual_temp, NOT_AVAILABLE);

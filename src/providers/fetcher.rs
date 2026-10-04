@@ -213,33 +213,33 @@ impl Fetcher {
         logger::debug(format!("Received API response: {} bytes", body.len()));
 
         // Check for API-specific errors if checker provided.
-        if let Some(checker) = error_checker {
-            if let Err(dashboard_error) = checker(&body) {
-                use crate::errors::Description;
-                logger::detail(format!(
-                    "Raw error details: {}",
-                    dashboard_error.long_description()
+        if let Some(checker) = error_checker
+            && let Err(dashboard_error) = checker(&body)
+        {
+            use crate::errors::Description;
+            logger::detail(format!(
+                "Raw error details: {}",
+                dashboard_error.long_description()
+            ));
+
+            // A 4xx status (other than 429, which is handled separately before this
+            // point) means the request itself is the problem - e.g. Open-Meteo
+            // rejecting an invalid parameter. That will fail identically on every
+            // retry, so log it and fall back to cached data immediately instead of
+            // wasting the retry budget.
+            if status.is_client_error() {
+                logger::warning(format!(
+                    "API request failed: {}",
+                    dashboard_error.short_description()
                 ));
-
-                // A 4xx status (other than 429, which is handled separately before this
-                // point) means the request itself is the problem - e.g. Open-Meteo
-                // rejecting an invalid parameter. That will fail identically on every
-                // retry, so log it and fall back to cached data immediately instead of
-                // wasting the retry budget.
-                if status.is_client_error() {
-                    logger::warning(format!(
-                        "API request failed: {}",
-                        dashboard_error.short_description()
-                    ));
-                    return self.fallback(file_path, dashboard_error);
-                }
-
-                // Otherwise (5xx, or a 2xx response whose body still signals an error,
-                // e.g. Open-Meteo's "The service is overloaded") treat it as transient
-                // and let `try_fetch_with_retry` retry it with backoff, the same way it
-                // retries network failures, instead of giving up after a single attempt.
-                return Err(TransientApiError(dashboard_error).into());
+                return self.fallback(file_path, dashboard_error);
             }
+
+            // Otherwise (5xx, or a 2xx response whose body still signals an error,
+            // e.g. Open-Meteo's "The service is overloaded") treat it as transient
+            // and let `try_fetch_with_retry` retry it with backoff, the same way it
+            // retries network failures, instead of giving up after a single attempt.
+            return Err(TransientApiError(dashboard_error).into());
         }
 
         // Parse before caching: a response that passes `error_checker` but fails to
@@ -863,10 +863,10 @@ mod tests {
 
             tokio::task::spawn_blocking(move || {
                 let client = reqwest::blocking::Client::new();
-                if let Ok(response) = client.get(&url).send() {
-                    if let Err(error) = response.error_for_status() {
-                        assert!(Fetcher::is_error_retryable(&error));
-                    }
+                if let Ok(response) = client.get(&url).send()
+                    && let Err(error) = response.error_for_status()
+                {
+                    assert!(Fetcher::is_error_retryable(&error));
                 }
             })
             .await
@@ -880,10 +880,10 @@ mod tests {
 
             tokio::task::spawn_blocking(move || {
                 let client = reqwest::blocking::Client::new();
-                if let Ok(response) = client.get(&url).send() {
-                    if let Err(error) = response.error_for_status() {
-                        assert!(Fetcher::is_error_retryable(&error));
-                    }
+                if let Ok(response) = client.get(&url).send()
+                    && let Err(error) = response.error_for_status()
+                {
+                    assert!(Fetcher::is_error_retryable(&error));
                 }
             })
             .await
@@ -897,10 +897,10 @@ mod tests {
 
             tokio::task::spawn_blocking(move || {
                 let client = reqwest::blocking::Client::new();
-                if let Ok(response) = client.get(&url).send() {
-                    if let Err(error) = response.error_for_status() {
-                        assert!(!Fetcher::is_error_retryable(&error));
-                    }
+                if let Ok(response) = client.get(&url).send()
+                    && let Err(error) = response.error_for_status()
+                {
+                    assert!(!Fetcher::is_error_retryable(&error));
                 }
             })
             .await
@@ -914,10 +914,10 @@ mod tests {
 
             tokio::task::spawn_blocking(move || {
                 let client = reqwest::blocking::Client::new();
-                if let Ok(response) = client.get(&url).send() {
-                    if let Err(error) = response.error_for_status() {
-                        assert!(!Fetcher::is_error_retryable(&error));
-                    }
+                if let Ok(response) = client.get(&url).send()
+                    && let Err(error) = response.error_for_status()
+                {
+                    assert!(!Fetcher::is_error_retryable(&error));
                 }
             })
             .await

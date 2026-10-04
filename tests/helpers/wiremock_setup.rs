@@ -8,8 +8,7 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 /// Setup wiremock server for Open-Meteo API using separate hourly and daily fixture files
 ///
 /// Open-Meteo API now uses two separate requests:
-/// - Hourly endpoint: `timezone=UTC` for hourly forecast data
-/// - Daily endpoint: `timezone=auto` for daily aggregations (max/min temps in local timezone)
+/// Hourly and daily requests are distinguished by their requested variables.
 ///
 /// # Arguments
 /// * `hourly_fixture_path` - Path to hourly JSON (e.g., "tests/fixtures/open_meteo_hourly_forecast.json")
@@ -38,19 +37,17 @@ pub async fn setup_open_meteo_mock(
         )
     });
 
-    // Setup hourly endpoint - matches timezone=UTC
     Mock::given(wiremock::matchers::method("GET"))
         .and(wiremock::matchers::path("/v1/forecast"))
-        .and(wiremock::matchers::query_param("timezone", "UTC"))
+        .and(wiremock::matchers::query_param_is_missing("daily"))
         .respond_with(ResponseTemplate::new(200).set_body_string(hourly_fixture))
         .expect(1)
         .mount(&mock_server)
         .await;
 
-    // Setup daily endpoint - matches timezone=auto
     Mock::given(wiremock::matchers::method("GET"))
         .and(wiremock::matchers::path("/v1/forecast"))
-        .and(wiremock::matchers::query_param("timezone", "auto"))
+        .and(wiremock::matchers::query_param_is_missing("hourly"))
         .respond_with(ResponseTemplate::new(200).set_body_string(daily_fixture))
         .expect(1)
         .mount(&mock_server)

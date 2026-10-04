@@ -117,6 +117,21 @@ special characters in the username/password. You can also set
 The setting applies to all run modes, including the web server. Restart the daemon
 after changing it. When omitted, the existing system proxy behavior is preserved.
 
+### HTTP server and Waveshare 5.65
+
+Build and start the HTTP server with `cargo run --features web -- --port 8080`.
+It serves `/dashboard.svg`, `/dashboard.png`, and `/dashboard.raw`, with an
+`X-Next-Delay` header controlled by `[web_server]` in the configured display timezone.
+When both `cli` and `web` features are enabled, the executable runs in CLI mode.
+
+For the 600×448 Waveshare display, use:
+
+```toml
+[misc]
+template_path = "dashboard-template-5.65f.svg"
+png_scale_factor = 1.0
+```
+
 ### Configuration Examples
 
 <!-- #### Default Configuration
@@ -218,6 +233,7 @@ key, its type, and its default value:
 | `[api]` | `latitude` | float | `-37.8136` | Location latitude |
 | `[api]` | `longitude` | float | `144.9631` | Location longitude |
 | `[api]` | `provider` | string | `"open_meteo"` | `"open_meteo"` (worldwide) or `"bom"` (Australia only) |
+| `[api]` | `timezone` | string | `"UTC"` | IANA timezone for Open-Meteo timestamps and daily aggregations |
 | `[colours]` | `background_colour` | string | `"white"` | Dashboard background colour |
 | `[colours]` | `text_colour` | string | `"black"` | Text colour |
 | `[colours]` | `x_axis_colour` | string | `"black"` | X-axis line colour |
@@ -231,6 +247,7 @@ key, its type, and its default value:
 | `[render_options]` | `wind_speed_unit` | string | `"km/h"` | `"km/h"`, `"mph"`, or `"knots"` |
 | `[render_options]` | `language` | string | `"en"` | UI language: `en`, `fr`, `de`, `es`, `ja` |
 | `[render_options]` | `date_format` | string | `"%A, %d %B"` | [chrono strftime](https://docs.rs/chrono/latest/chrono/format/strftime/) format |
+| `[render_options]` | `time_format` | string | `"%T"` | Current time format in the Waveshare template |
 | `[render_options]` | `use_moon_phase_instead_of_clear_night` | bool | `true` | Show moon phase icon instead of clear-night icon |
 | `[render_options]` | `x_axis_always_at_min` | bool | `true` | Keep x-axis at y=0 when temperature is below zero |
 | `[render_options]` | `use_gust_instead_of_wind` | bool | `false` | Display gust speed instead of sustained wind speed |
@@ -238,6 +255,9 @@ key, its type, and its default value:
 | `[render_options]` | `precipitation_opacity_min` | float | `0.40` | Gradient fill opacity at 0% precipitation chance (0.0–1.0, must be < max) |
 | `[render_options]` | `precipitation_opacity_max` | float | `0.60` | Gradient fill opacity at 100% precipitation chance (0.0–1.0, must be > min) |
 | `[misc]` | `timezone` | string | unset (system timezone) | IANA timezone override for displayed times |
+| `[misc]` | `png_scale_factor` | float | `2.0` | PNG and RAW output scale; use `1.0` for native template dimensions |
+| `[misc]` | `generated_raw_name` | string | `"dashboard.raw"` | Packed 4-bit palette output path |
+| `[dev]` | `disable_raw_7color_output` | bool | `false` | Skip writing RAW output after PNG generation |
 | `[release]` | `update_interval_days` | int | `7` | Days between auto-update checks; `0` disables |
 | `[release]` | `allow_pre_release_version` | bool | `false` | Opt in to pre-release versions |
 

@@ -740,8 +740,8 @@ mod tests {
         // (a missing glyph is a silent tofu box on the actual dashboard,
         // not a panic) if the shared db can't render one of its characters.
         use crate::i18n::{
-            month_long, month_short, translate, weekday_long, weekday_short, Language,
-            TranslationKey,
+            Language, TranslationKey, month_long, month_short, translate, weekday_long,
+            weekday_short,
         };
         use chrono::Weekday;
         use strum::IntoEnumIterator;
@@ -805,7 +805,7 @@ mod tests {
     /// than a hand-copied list, so a future language is automatically
     /// covered by both this and `stacked_label_dx_centers_every_locale_pair`.
     fn feels_like_locale_pairs() -> Vec<(&'static str, &'static str)> {
-        use crate::i18n::{translate, Language, TranslationKey};
+        use crate::i18n::{Language, TranslationKey, translate};
         use strum::IntoEnumIterator;
 
         Language::iter()

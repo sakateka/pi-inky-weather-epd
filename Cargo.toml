@@ -28,6 +28,7 @@ strum_macros = "0.28"
 config = "0.15"
 tinytemplate = "1.2"
 resvg = "0.48"
+image = { version = "0.25", default-features = false, features = ["png"] }
 zip = "8.1.0"
 semver = "1.0"
 tempfile = "3.17"

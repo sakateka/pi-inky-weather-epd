@@ -6,7 +6,7 @@ use std::{
 use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
 
-use crate::i18n::{format_localized_date, Language};
+use crate::i18n::{Language, format_localized_date};
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct ValidationError {

@@ -113,7 +113,7 @@ mod cli {
 }
 
 // Web server mode
-#[cfg(feature = "web")]
+#[cfg(all(feature = "web", not(feature = "cli")))]
 mod web {
     use anyhow::Result;
     use clap::Parser;
@@ -131,7 +131,7 @@ mod web {
 
     pub async fn run() -> Result<()> {
         let args = Args::parse();
-        web_server::run_server(args.port).await?;
+        web_server::run_server(super::load_settings(), args.port).await?;
         Ok(())
     }
 }
@@ -141,7 +141,7 @@ fn main() -> Result<()> {
     cli::run()
 }
 
-#[cfg(feature = "web")]
+#[cfg(all(feature = "web", not(feature = "cli")))]
 #[tokio::main]
 async fn main() -> Result<()> {
     web::run().await

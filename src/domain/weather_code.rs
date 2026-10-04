@@ -409,34 +409,50 @@ mod tests {
     #[test]
     fn test_intensity_gradation() {
         // Light → PartlyCloudy
-        assert!(WmoWeatherCode::DrizzleLight
-            .icon_name(false)
-            .contains("partly-cloudy"));
-        assert!(WmoWeatherCode::RainSlight
-            .icon_name(false)
-            .contains("partly-cloudy"));
-        assert!(WmoWeatherCode::SnowSlight
-            .icon_name(false)
-            .contains("partly-cloudy"));
+        assert!(
+            WmoWeatherCode::DrizzleLight
+                .icon_name(false)
+                .contains("partly-cloudy")
+        );
+        assert!(
+            WmoWeatherCode::RainSlight
+                .icon_name(false)
+                .contains("partly-cloudy")
+        );
+        assert!(
+            WmoWeatherCode::SnowSlight
+                .icon_name(false)
+                .contains("partly-cloudy")
+        );
 
         // Moderate → Overcast
-        assert!(WmoWeatherCode::DrizzleModerate
-            .icon_name(false)
-            .contains("overcast"));
-        assert!(WmoWeatherCode::RainModerate
-            .icon_name(false)
-            .contains("overcast"));
-        assert!(WmoWeatherCode::SnowModerate
-            .icon_name(false)
-            .contains("overcast"));
+        assert!(
+            WmoWeatherCode::DrizzleModerate
+                .icon_name(false)
+                .contains("overcast")
+        );
+        assert!(
+            WmoWeatherCode::RainModerate
+                .icon_name(false)
+                .contains("overcast")
+        );
+        assert!(
+            WmoWeatherCode::SnowModerate
+                .icon_name(false)
+                .contains("overcast")
+        );
 
         // Heavy → Extreme
-        assert!(WmoWeatherCode::RainHeavy
-            .icon_name(false)
-            .contains("extreme"));
-        assert!(WmoWeatherCode::SnowHeavy
-            .icon_name(false)
-            .contains("extreme"));
+        assert!(
+            WmoWeatherCode::RainHeavy
+                .icon_name(false)
+                .contains("extreme")
+        );
+        assert!(
+            WmoWeatherCode::SnowHeavy
+                .icon_name(false)
+                .contains("extreme")
+        );
     }
 
     #[test]

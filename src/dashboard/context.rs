@@ -1,11 +1,11 @@
 use crate::{
     clock::Clock,
     configs::settings::DashboardSettings,
-    constants::{not_available_icon_path, NOT_AVAILABLE},
+    constants::{NOT_AVAILABLE, not_available_icon_path},
     dashboard::chart::{GraphDataPath, HourlyForecastGraph},
     domain::models::{DailyForecast, HourlyForecast},
     errors::{DashboardError, Description},
-    i18n::{format_localized_date, translate, weekday_short, Language, TranslationKey},
+    i18n::{Language, TranslationKey, format_localized_date, translate, weekday_short},
     logger,
     utils::{
         find_max_item_between_dates, measure_label_to_number_gap_dx, measure_stacked_label_dx,
@@ -18,7 +18,7 @@ use chrono_tz::Tz;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use super::chart::{generate_unified_precipitation_svg, CurveType, ElementVisibility, FontStyle};
+use super::chart::{CurveType, ElementVisibility, FontStyle, generate_unified_precipitation_svg};
 
 // =============================================================================
 // TEMPORARY WORKAROUND — remove once resvg/usvg supports tspan `text-anchor`
@@ -434,19 +434,19 @@ impl<'a> ContextBuilder<'a> {
         match day_index {
             0 => {
                 // Day 0 (today) - show sunrise/sunset times
-                if let Some(forecast) = forecast {
-                    if let Some(ref astro) = forecast.astronomical {
-                        // Sunrise/sunset are NaiveDateTime (already in local time)
-                        // Format directly without timezone conversion
-                        self.context.sunrise_time = astro
-                            .sunrise_time
-                            .map(|dt| dt.format("%H:%M").to_string())
-                            .unwrap_or_else(|| NOT_AVAILABLE.to_string());
-                        self.context.sunset_time = astro
-                            .sunset_time
-                            .map(|dt| dt.format("%H:%M").to_string())
-                            .unwrap_or_else(|| NOT_AVAILABLE.to_string());
-                    }
+                if let Some(forecast) = forecast
+                    && let Some(ref astro) = forecast.astronomical
+                {
+                    // Sunrise/sunset are NaiveDateTime (already in local time)
+                    // Format directly without timezone conversion
+                    self.context.sunrise_time = astro
+                        .sunrise_time
+                        .map(|dt| dt.format("%H:%M").to_string())
+                        .unwrap_or_else(|| NOT_AVAILABLE.to_string());
+                    self.context.sunset_time = astro
+                        .sunset_time
+                        .map(|dt| dt.format("%H:%M").to_string())
+                        .unwrap_or_else(|| NOT_AVAILABLE.to_string());
                 }
             }
             1 => {
@@ -1356,10 +1356,12 @@ mod tests {
                 builder1.context.diagnostic_icons_svg,
                 builder2.context.diagnostic_icons_svg
             );
-            assert!(builder1
-                .context
-                .diagnostic_icons_svg
-                .contains("code-red.svg"));
+            assert!(
+                builder1
+                    .context
+                    .diagnostic_icons_svg
+                    .contains("code-red.svg")
+            );
         }
 
         #[test]

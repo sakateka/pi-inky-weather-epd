@@ -2,7 +2,7 @@ use crate::{
     clock::Clock,
     configs::settings::HourFormat,
     constants::DEFAULT_AXIS_LABEL_FONT_SIZE,
-    i18n::{weekday_long, Language},
+    i18n::{Language, weekday_long},
     logger,
     utils::{measure_ink_y_center, weekday_after_days},
     weather::icons::UVIndexIcon,
