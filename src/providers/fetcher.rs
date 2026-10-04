@@ -75,15 +75,18 @@ pub struct Fetcher {
 }
 
 impl Fetcher {
-    pub fn new(cache_path: PathBuf) -> Self {
-        let client = reqwest::blocking::Client::builder()
-            .user_agent(format!(
-                "{}/{} ({})",
-                env!("CARGO_PKG_NAME"),
-                env!("CARGO_PKG_VERSION"),
-                "Raspberry Pi Weather Dashboard"
-            ))
-            .build()
+    pub fn new(cache_path: PathBuf, proxy: Option<&Url>) -> Self {
+        let client = crate::utils::client_builder(proxy)
+            .and_then(|builder| {
+                builder
+                    .user_agent(format!(
+                        "{}/{} ({})",
+                        env!("CARGO_PKG_NAME"),
+                        env!("CARGO_PKG_VERSION"),
+                        "Raspberry Pi Weather Dashboard"
+                    ))
+                    .build()
+            })
             .expect("Failed to build HTTP client");
 
         Self { cache_path, client }

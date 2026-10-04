@@ -50,7 +50,7 @@ async fn test_retry_succeeds_on_third_attempt() {
         let cache_path = temp_dir.path().to_path_buf();
 
         // Create fetcher
-        let fetcher = Fetcher::new(cache_path.clone());
+        let fetcher = Fetcher::new(cache_path.clone(), None);
 
         // Create cache file with fallback data (in case all retries fail)
         let cache_file = cache_path.join("test_data.json");
@@ -160,7 +160,7 @@ async fn test_body_level_transient_error_is_retried_and_recovers() {
     let result = tokio::task::spawn_blocking(move || {
         let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
         let cache_path = temp_dir.path().to_path_buf();
-        let fetcher = Fetcher::new(cache_path.clone());
+        let fetcher = Fetcher::new(cache_path.clone(), None);
 
         let cache_file = cache_path.join("test_data.json");
         std::fs::write(
@@ -242,7 +242,7 @@ async fn test_body_level_client_error_is_not_retried() {
     let result = tokio::task::spawn_blocking(move || {
         let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
         let cache_path = temp_dir.path().to_path_buf();
-        let fetcher = Fetcher::new(cache_path.clone());
+        let fetcher = Fetcher::new(cache_path.clone(), None);
 
         let cache_file = cache_path.join("test_data.json");
         std::fs::write(
@@ -330,7 +330,7 @@ async fn test_undeserializable_response_does_not_poison_cache() {
         // before the post-fetch assertions below read the cache file back.
         let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
         let cache_path = temp_dir.path().to_path_buf();
-        let fetcher = Fetcher::new(cache_path.clone());
+        let fetcher = Fetcher::new(cache_path.clone(), None);
 
         let cache_file = cache_path.join("test_data.json");
         std::fs::write(

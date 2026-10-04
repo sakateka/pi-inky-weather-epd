@@ -100,6 +100,24 @@ You can override the default configs located at [./config/](./config/) by creati
 ~/.config/pi-inky-weather-epd.toml
 ```
 
+### SOCKS5 proxy
+
+To route weather requests and update checks/downloads through a proxy, add this to
+`~/.config/pi-inky-weather-epd.toml` (or `config/local.toml`):
+
+```toml
+[network]
+proxy = "socks5h://127.0.0.1:1080"
+```
+
+Use `socks5h://` for DNS resolution through the proxy, or `socks5://` for local DNS.
+For authentication, use `socks5h://username:password@host:port`; percent-encode
+special characters in the username/password. You can also set
+`APP_NETWORK__PROXY=socks5h://127.0.0.1:1080` in the daemon's environment.
+The setting applies to all run modes, including the web server. Restart the daemon
+after changing it. When omitted, the existing system proxy behavior is preserved.
+
+### Configuration Examples
 
 <!-- #### Default Configuration
 

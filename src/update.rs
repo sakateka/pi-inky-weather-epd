@@ -52,7 +52,7 @@ impl UpdateService {
     pub fn new(settings: &DashboardSettings) -> Result<Self> {
         let current_version = Version::parse(env!("CARGO_PKG_VERSION"))?;
         Ok(Self {
-            client: reqwest::blocking::Client::new(),
+            client: crate::utils::client_builder(settings.network.proxy.as_ref())?.build()?,
             base_dir: base_dir_path()?,
             user_agent: format!("{PACKAGE_NAME}/{current_version}"),
             release_info_url: settings.release.release_info_url.clone(),

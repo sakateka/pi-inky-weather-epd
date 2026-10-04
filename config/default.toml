@@ -1,3 +1,9 @@
+[network]
+# Optional proxy for weather requests and updates. Omit to use system proxy settings.
+# socks5h resolves destination hostnames through the proxy; socks5 resolves locally.
+# proxy = "socks5h://127.0.0.1:1080"
+# proxy = "socks5h://username:password@127.0.0.1:1080"
+
 [release]
 release_info_url = "https://api.github.com/repos/mt-empty/pi-inky-weather-epd/releases/latest"
 download_base_url = "https://github.com/mt-empty/pi-inky-weather-epd/releases/download"

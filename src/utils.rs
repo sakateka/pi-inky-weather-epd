@@ -5,12 +5,22 @@ use anyhow::Error;
 use anyhow::Result;
 use chrono::DateTime;
 use chrono::TimeZone;
+use reqwest::blocking::{Client, ClientBuilder};
 use resvg::tiny_skia;
 use resvg::usvg;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::{Arc, OnceLock};
+use url::Url;
 use usvg::fontdb;
+
+pub(crate) fn client_builder(proxy: Option<&Url>) -> reqwest::Result<ClientBuilder> {
+    let mut builder = Client::builder();
+    if let Some(proxy) = proxy {
+        builder = builder.proxy(reqwest::Proxy::all(proxy.clone())?);
+    }
+    Ok(builder)
+}
 
 /// Converts an SVG file to a PNG file.
 ///

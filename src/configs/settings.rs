@@ -253,8 +253,15 @@ pub struct WebServer {
     pub active_hours_interval_seconds: u32,
 }
 
+#[derive(Debug, Default, Deserialize)]
+pub struct Network {
+    pub proxy: Option<Url>,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct DashboardSettings {
+    #[serde(default)]
+    pub network: Network,
     pub release: Release,
     pub api: Api,
     pub colours: Colours,
@@ -447,6 +454,9 @@ impl DashboardSettings {
 
         logger::section("Configuration loaded");
 
+        logger::config_group("Network Settings");
+        logger::kvp("Proxy configured", self.network.proxy.is_some());
+
         // API Settings
         logger::config_group("API Settings");
         logger::kvp("Provider", format!("{}", self.api.provider));
@@ -548,7 +558,51 @@ impl DashboardSettings {
 
 #[cfg(test)]
 mod tests {
-    use super::{validate_release_cross_fields, UpdateIntervalDays};
+    use super::{validate_release_cross_fields, DashboardSettings, UpdateIntervalDays};
+    use config::{Config, Environment, File, FileFormat};
+
+    #[test]
+    fn network_proxy_is_optional_in_existing_configs() {
+        let default = include_str!("../../config/default.toml");
+        let settings: DashboardSettings = Config::builder()
+            .add_source(File::from_str(
+                &default[default.find("[release]").unwrap()..],
+                FileFormat::Toml,
+            ))
+            .build()
+            .unwrap()
+            .try_deserialize()
+            .unwrap();
+        assert!(settings.network.proxy.is_none());
+    }
+
+    #[test]
+    fn network_proxy_can_be_overridden_by_environment() {
+        let proxy = "socks5h://user:password@localhost:1081";
+        let settings: DashboardSettings = Config::builder()
+            .add_source(File::from_str(
+                include_str!("../../config/default.toml"),
+                FileFormat::Toml,
+            ))
+            .add_source(File::from_str(
+                "[network]\nproxy = 'socks5://127.0.0.1:1080'",
+                FileFormat::Toml,
+            ))
+            .add_source(
+                Environment::with_prefix("APP")
+                    .prefix_separator("_")
+                    .separator("__")
+                    .source(Some(std::collections::HashMap::from([(
+                        "APP_NETWORK__PROXY".into(),
+                        proxy.into(),
+                    )]))),
+            )
+            .build()
+            .unwrap()
+            .try_deserialize()
+            .unwrap();
+        assert_eq!(settings.network.proxy.unwrap().as_str(), proxy);
+    }
 
     #[test]
     fn allow_pre_release_with_zero_interval_is_rejected() {

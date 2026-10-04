@@ -56,9 +56,9 @@ pub struct BomProvider {
 }
 
 impl BomProvider {
-    pub fn new(cache_path: PathBuf) -> Self {
+    pub fn new(cache_path: PathBuf, proxy: Option<&url::Url>) -> Self {
         Self {
-            fetcher: Fetcher::new(cache_path),
+            fetcher: Fetcher::new(cache_path, proxy),
         }
     }
 }
